@@ -9,11 +9,20 @@ defmodule ErrorsTest do
       assert Errors.wrap_context(:ok, "doing something", %{foo: :bar}) == :ok
     end
 
-    test "with :error tuple wraps the error in a WrappedError" do
+    test "with {:error, _} wraps the error in a WrappedError" do
       {:error, %WrappedError{} = wrapped_error} =
         Errors.wrap_context({:error, :some_reason}, "doing something", %{foo: :bar})
 
       assert wrapped_error.reason == :some_reason
+      assert wrapped_error.context == "doing something"
+      assert wrapped_error.metadata == %{foo: :bar}
+    end
+
+    test "with :error wraps the error in a WrappedError" do
+      {:error, %WrappedError{} = wrapped_error} =
+        Errors.wrap_context(:error, "doing something", %{foo: :bar})
+
+      assert wrapped_error.reason == nil
       assert wrapped_error.context == "doing something"
       assert wrapped_error.metadata == %{foo: :bar}
     end

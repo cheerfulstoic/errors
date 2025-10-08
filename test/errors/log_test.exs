@@ -47,7 +47,7 @@ defmodule Errors.LogTest do
     end
 
     test "logs and passes through {:error, %Errors.WrappedError{}}" do
-      exception = Errors.WrappedError.new(:failed, "fooing the bar")
+      exception = Errors.WrappedError.new({:error, :failed}, "fooing the bar")
 
       log =
         capture_log([level: :error], fn ->
@@ -60,10 +60,11 @@ defmodule Errors.LogTest do
       # Nested
       exception =
         Errors.WrappedError.new(
-          Errors.WrappedError.new(
-            %RuntimeError{message: "an example error message"},
-            "lower down"
-          ),
+          {:error,
+           Errors.WrappedError.new(
+             {:error, %RuntimeError{message: "an example error message"}},
+             "lower down"
+           )},
           "higher up"
         )
 

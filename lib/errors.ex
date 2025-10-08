@@ -13,13 +13,12 @@ defmodule Errors do
     {:ok, result}
   end
 
+  def wrap_context(:error, context, metadata) do
+    {:error, Errors.WrappedError.new(:error, context, metadata)}
+  end
+
   def wrap_context({:error, reason}, context, metadata) do
-    {:error,
-     %Errors.WrappedError{
-       reason: reason,
-       context: context,
-       metadata: metadata
-     }}
+    {:error, Errors.WrappedError.new({:error, reason}, context, metadata)}
   end
 
   def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)

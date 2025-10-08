@@ -1,14 +1,27 @@
 defmodule Errors.WrappedError do
-  @enforce_keys [:reason]
-  defexception [:reason, :context, :metadata, :message]
+  @enforce_keys [:result, :reason]
+  defexception [:result, :reason, :context, :metadata, :message]
 
   # Offer `new/3` as a way to create `WrappedErrors` so that the `message` is set
   # but also create `message/1` callback in case an exception is created manually
   # See: https://hexdocs.pm/elixir/Exception.html#c:message/1
 
-  def new(reason, context, metadata \\ %{}) when is_binary(context) do
+  def new(result, context, metadata \\ %{}) when is_binary(context) do
+    reason =
+      case result do
+        :error ->
+          nil
+
+        {:error, reason} ->
+          reason
+
+        other ->
+          raise ArgumentError, "Errors wrap either :error or {:error, _}, got: #{inspect(other)}"
+      end
+
     exception =
       %__MODULE__{
+        result: result,
         reason: reason,
         context: context,
         metadata: metadata
