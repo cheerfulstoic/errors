@@ -17,9 +17,13 @@ defmodule Errors.WrappedError do
     %{exception | message: message(exception)}
   end
 
-  def message(%__MODULE__{reason: reason} = error) when is_binary(error.context) do
+  def message(%__MODULE__{} = error) when is_binary(error.context) do
+    {contexts, root_reason} = unwrap(error)
+
+    context_string = Enum.join(contexts, " => ")
+
     reason_message =
-      case Errors.reason_metadata(reason) do
+      case Errors.reason_metadata(root_reason) do
         %{mod: mod, message: message} ->
           "#{inspect(mod)}: #{message}"
 
@@ -27,7 +31,17 @@ defmodule Errors.WrappedError do
           message
       end
 
-    "WRAPPED ERROR (#{error.context}) #{reason_message}"
+    "WRAPPED ERROR (#{context_string}) #{reason_message}"
+  end
+
+  defp unwrap(%__MODULE__{reason: %__MODULE__{} = nested_error, context: context}) do
+    {nested_context, root_reason} = unwrap(nested_error)
+
+    {[context | nested_context], root_reason}
+  end
+
+  defp unwrap(%__MODULE__{reason: reason, context: context}) do
+    {[context], reason}
   end
 end
 

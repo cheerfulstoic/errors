@@ -65,7 +65,7 @@ defmodule Errors do
       Exception.message(exception)
     else
       Logger.warning(
-        " ** (#{mod}) !!! Exception module doesn't have a `message` key or implement a `message/1` callback !!!"
+        "Exception module `#{inspect(mod)}` doesn't have a `message` key or implement a `message/1` callback"
       )
 
       inspect(exception)

@@ -87,11 +87,8 @@ defmodule Errors.WrappedErrorTest do
         context: "fobbing a widget"
       }
 
-      expected_message = """
-      Error when trying: fobbing a widget
-
-      Errors.WrappedErrorTest.TestWithoutMessageError: %Errors.WrappedErrorTest.TestWithoutMessageError{status: :unknown}
-      """
+      expected_message =
+        ~S[WRAPPED ERROR (fobbing a widget) Errors.WrappedErrorTest.TestWithoutMessageError: %Errors.WrappedErrorTest.TestWithoutMessageError{status: :unknown}]
 
       log =
         capture_log([level: :warning], fn ->
