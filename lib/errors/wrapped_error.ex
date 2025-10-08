@@ -6,7 +6,7 @@ defmodule Errors.WrappedError do
   # but also create `message/1` callback in case an exception is created manually
   # See: https://hexdocs.pm/elixir/Exception.html#c:message/1
 
-  def new(reason, context, metadata) when is_binary(context) do
+  def new(reason, context, metadata \\ %{}) when is_binary(context) do
     exception =
       %__MODULE__{
         reason: reason,

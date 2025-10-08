@@ -71,4 +71,49 @@ defmodule Errors do
       inspect(exception)
     end
   end
+
+  def log(result, :error) do
+    case result do
+      :error ->
+        log(result, :all)
+
+      {:error, _} ->
+        log(result, :all)
+
+      _ ->
+        :ok
+    end
+
+    result
+  end
+
+  def log(result, :all) do
+    case result do
+      :error ->
+        Logger.error("[RESULT] :error")
+
+      {:error, %Errors.WrappedError{} = reason} ->
+        Logger.error("[RESULT] #{Exception.message(reason)}")
+
+      {:error, reason} ->
+        case reason_metadata(reason) do
+          %{mod: mod, message: message} ->
+            Logger.error("[RESULT] {:error, %#{inspect(mod)}{...}} (message: #{message})")
+
+          %{message: message} ->
+            Logger.error("[RESULT] {:error, #{message}}")
+        end
+
+      :ok ->
+        Logger.info("[RESULT] :ok")
+
+      {:ok, value} ->
+        Logger.info("[RESULT] {:ok, #{inspect(value)}}")
+
+      _ ->
+        :ok
+    end
+
+    result
+  end
 end
