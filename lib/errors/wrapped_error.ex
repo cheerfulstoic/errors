@@ -44,7 +44,7 @@ defmodule Errors.WrappedError do
           message
       end
 
-    "WRAPPED ERROR (#{context_string}) #{reason_message}"
+    "[CONTEXT: #{context_string}] #{reason_message}"
   end
 
   defp unwrap(%__MODULE__{reason: %__MODULE__{} = nested_error, context: context}) do

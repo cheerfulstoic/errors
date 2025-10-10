@@ -72,7 +72,7 @@ defmodule Errors.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) WRAPPED ERROR \(fooing the bar\) :failed>
+               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) \[CONTEXT: fooing the bar\] :failed>
 
       # Nested
       exception =
@@ -92,7 +92,7 @@ defmodule Errors.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) WRAPPED ERROR \(higher up =\> lower down\) RuntimeError: an example error message>
+               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) \[CONTEXT: higher up =\> lower down\] RuntimeError: an example error message>
     end
 
     test "does not log :ok atom" do
