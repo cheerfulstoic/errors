@@ -61,9 +61,14 @@ defmodule API.UserController do
     Users.create_user(params)
     |> Errors.log(:errors)  # Only logs if there's an error
     |> case do
-      {:ok, user} -> render(conn, "user.json", user: user)
+      {:ok, user} ->
+        conn
+        |> render("user.json", user: user)
       # Ideally we should return a useful error... see below!
-      {:error, _} -> send_resp(conn, 400, "Unable to create user")
+      {:error, _} ->
+        conn
+        |> put_status(400)
+        |> json(%{error: "Unable to create user"})
     end
   end
 end
@@ -96,6 +101,7 @@ defmodule MyAppWeb.UserController do
 
 # The line in the log might look something like:
 # [info] [RESULT] (lib/some_library.ex:4) {:error, %Ecto.Changeset{...}}
+
 # Where you would like it to show:
 # [info] [RESULT] (lib/my_app_web/user_controller.ex:5) {:error, %Ecto.Changeset{...}}
 ```
@@ -115,6 +121,40 @@ all of which can potentially return ok/error results.  When getting back `{:erro
 often the value inside of the tuple could be one of many things (e.g. a string/atom/struct/exception, etc...)
 Often the simplest thing to do is to return something like `There was an error: #{inspect(reason)}`, but
 that value often won't make sense to the user.  So we should find a way to make it human-readable, whenever possible.
+
+```elixir
+defmodule MyAppWeb.UserController do
+  def checkout(conn, params) do
+    MyApp.Users.create_user(params)
+    |> case do
+      {:ok, result} ->
+        conn
+        |> render("checkout.json", result: result)
+      # Ideally we should return a useful error... see below!
+      {:error, reason} ->
+        conn
+        |> put_status(400)
+        |> json(%{error: Errors.user_message(reason)})
+    end
+    # ...
+```
+
+In this case, you could imagine that `MyApp.Users.create_user(params)` could return one of the following errors:
+
+```elixir
+# A string
+{:error, "Could not contact tracking server"}
+# An atom
+{:error, :user_not_found}
+# A struct containing errors
+{:error, %Ecto.Changeset{...}}
+# An exception value
+{:error, %%Jason.DecodeError{{...}}
+```
+
+`Errors.user_message` always turns the `reason` into a string and does it's best to extract the appropriate data for a human-readable string.
+
+Additionally, if you use `Errors.wrap_context`, additional information will be available to help describe the error.
 
 ## API Reference
 
@@ -145,12 +185,9 @@ Logs results and passes them through unchanged.
 
 Returns the original result unchanged.
 
-**Configuration:**
+### `Errors.user_message/1`
 
-```elixir
-# config/config.exs
-config :errors, :app, :my_app_name
-```
+- `reason` - Any `term()` value
 
 ## Development
 
@@ -160,7 +197,7 @@ Run tests:
 mix test
 ```
 
-Run tests in watch mode:
+Run tests in watch mode (uses [`mix_test_interactive`](https://hex.pm/packages/mix_test_interactive):
 
 ```bash
 mix test.interactive
