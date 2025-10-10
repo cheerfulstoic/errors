@@ -27,7 +27,7 @@ defmodule Errors do
 
   def telemetry({:ok, _} = result, name) do
     :telemetry.execute(
-      [:errors, :success],
+      [:errors, :ok],
       %{count: 1},
       %{name: name}
     )
@@ -71,48 +71,78 @@ defmodule Errors do
     end
   end
 
-  def log(result, :error) do
-    case result do
-      :error ->
-        log(result, :all)
+  def log(result, mode) do
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 
-      {:error, _} ->
-        log(result, :all)
+    stacktrace_line =
+      stacktrace
+      |> find_stacktrace_entry()
+      |> format_file_line()
 
-      _ ->
-        :ok
+    log_spec =
+      case result do
+        :error ->
+          {:error, ":error"}
+
+        {:error, %Errors.WrappedError{} = reason} ->
+          {:error, Exception.message(reason)}
+
+        {:error, reason} ->
+          case reason_metadata(reason) do
+            %{mod: mod, message: message} ->
+              {:error, "{:error, %#{inspect(mod)}{...}} (message: #{message})"}
+
+            %{message: message} ->
+              {:error, "{:error, #{message}}"}
+          end
+
+        :ok ->
+          if mode == :all do
+            {:info, ":ok"}
+          end
+
+        {:ok, value} ->
+          if mode == :all do
+            {:info, "{:ok, #{inspect(value)}}"}
+          end
+
+        _ ->
+          # TODO: Should we always raise?
+          raise ArgumentError,
+                "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: #{inspect(result)}"
+      end
+
+    with {level, message} <- log_spec do
+      Logger.log(level, "[RESULT] #{stacktrace_line} #{message}")
     end
 
     result
   end
 
-  def log(result, :all) do
-    case result do
-      :error ->
-        Logger.error("[RESULT] :error")
+  defp find_stacktrace_entry(stacktrace) do
+    # Skip `Process.info` line and the `Errors.log` line:
+    stacktrace = Enum.drop(stacktrace, 2)
 
-      {:error, %Errors.WrappedError{} = reason} ->
-        Logger.error("[RESULT] #{Exception.message(reason)}")
+    if app = Application.get_env(:errors, :app) do
+      index =
+        Enum.find_index(stacktrace, fn {mod, _, _, _} ->
+          match?({:ok, ^app}, :application.get_application(mod))
+        end)
 
-      {:error, reason} ->
-        case reason_metadata(reason) do
-          %{mod: mod, message: message} ->
-            Logger.error("[RESULT] {:error, %#{inspect(mod)}{...}} (message: #{message})")
-
-          %{message: message} ->
-            Logger.error("[RESULT] {:error, #{message}}")
-        end
-
-      :ok ->
-        Logger.info("[RESULT] :ok")
-
-      {:ok, value} ->
-        Logger.info("[RESULT] {:ok, #{inspect(value)}}")
-
-      _ ->
-        :ok
+      Enum.at(stacktrace, index || 0)
+    else
+      List.first(stacktrace)
     end
+  end
 
-    result
+  defp format_file_line({_mod, _func, _arity, location}) do
+    file = Keyword.get(location, :file)
+    line = Keyword.get(location, :line)
+
+    cond do
+      is_nil(file) -> ""
+      is_nil(line) or line == 0 -> "(#{file})"
+      true -> "(#{file}:#{line})"
+    end
   end
 end

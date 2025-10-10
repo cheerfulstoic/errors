@@ -3,35 +3,50 @@ defmodule Errors.LogTest do
   import ExUnit.CaptureLog
   require Logger
 
+  setup do
+    Application.delete_env(:errors, :app)
+
+    :ok
+  end
+
   describe ".log with :error mode" do
+    test "argument can only be a result" do
+      assert_raise ArgumentError,
+                   "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: 123",
+                   fn ->
+                     123 |> Errors.log(:errors)
+                   end
+    end
+
     test "logs and passes through :error atom" do
       log =
         capture_log([level: :error], fn ->
-          result = :error |> Errors.log(:error)
+          result = :error |> Errors.log(:errors)
           assert result == :error
         end)
 
-      assert log =~ "[RESULT] :error"
+      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) :error>
     end
 
     test "logs and passes through {:error, binary}" do
       log =
         capture_log([level: :error], fn ->
-          result = {:error, "something went wrong"} |> Errors.log(:error)
+          result = {:error, "something went wrong"} |> Errors.log(:errors)
           assert result == {:error, "something went wrong"}
         end)
 
-      assert log =~ "[RESULT] {:error, \"something went wrong\"}"
+      assert log =~
+               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:error, \"something went wrong\"}>
     end
 
     test "logs and passes through {:error, atom}" do
       log =
         capture_log([level: :error], fn ->
-          result = {:error, :timeout} |> Errors.log(:error)
+          result = {:error, :timeout} |> Errors.log(:errors)
           assert result == {:error, :timeout}
         end)
 
-      assert log =~ "[RESULT] {:error, :timeout}"
+      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:error, :timeout}>
     end
 
     test "logs and passes through {:error, exception}" do
@@ -39,11 +54,12 @@ defmodule Errors.LogTest do
 
       log =
         capture_log([level: :error], fn ->
-          result = {:error, exception} |> Errors.log(:error)
+          result = {:error, exception} |> Errors.log(:errors)
           assert result == {:error, exception}
         end)
 
-      assert log =~ "[RESULT] {:error, %RuntimeError{...}} (message: an example error message)"
+      assert log =~
+               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:error, %RuntimeError{\.\.\.}} \(message: an example error message\)>
     end
 
     test "logs and passes through {:error, %Errors.WrappedError{}}" do
@@ -51,11 +67,12 @@ defmodule Errors.LogTest do
 
       log =
         capture_log([level: :error], fn ->
-          result = {:error, exception} |> Errors.log(:error)
+          result = {:error, exception} |> Errors.log(:errors)
           assert result == {:error, exception}
         end)
 
-      assert log =~ "[RESULT] WRAPPED ERROR (fooing the bar) :failed"
+      assert log =~
+               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) WRAPPED ERROR \(fooing the bar\) :failed>
 
       # Nested
       exception =
@@ -70,18 +87,18 @@ defmodule Errors.LogTest do
 
       log =
         capture_log([level: :error], fn ->
-          result = {:error, exception} |> Errors.log(:error)
+          result = {:error, exception} |> Errors.log(:errors)
           assert result == {:error, exception}
         end)
 
       assert log =~
-               "[RESULT] WRAPPED ERROR (higher up => lower down) RuntimeError: an example error message"
+               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) WRAPPED ERROR \(higher up =\> lower down\) RuntimeError: an example error message>
     end
 
     test "does not log :ok atom" do
       log =
         capture_log([level: :error], fn ->
-          result = :ok |> Errors.log(:error)
+          result = :ok |> Errors.log(:errors)
           assert result == :ok
         end)
 
@@ -91,18 +108,8 @@ defmodule Errors.LogTest do
     test "does not log {:ok, value}" do
       log =
         capture_log([level: :error], fn ->
-          result = {:ok, "success"} |> Errors.log(:error)
+          result = {:ok, "success"} |> Errors.log(:errors)
           assert result == {:ok, "success"}
-        end)
-
-      assert log == ""
-    end
-
-    test "passes through other values without logging" do
-      log =
-        capture_log([level: :error], fn ->
-          result = "random value" |> Errors.log(:error)
-          assert result == "random value"
         end)
 
       assert log == ""
@@ -110,6 +117,14 @@ defmodule Errors.LogTest do
   end
 
   describe ".log with :all mode" do
+    test "argument can only be a result" do
+      assert_raise ArgumentError,
+                   "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: 123",
+                   fn ->
+                     123 |> Errors.log(:all)
+                   end
+    end
+
     test "logs :error atom" do
       log =
         capture_log([level: :info], fn ->
@@ -117,7 +132,7 @@ defmodule Errors.LogTest do
           assert result == :error
         end)
 
-      assert log =~ "[RESULT] :error"
+      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) :error>
     end
 
     test "logs {:error, binary}" do
@@ -127,7 +142,8 @@ defmodule Errors.LogTest do
           assert result == {:error, "something went wrong"}
         end)
 
-      assert log =~ "[RESULT] {:error, \"something went wrong\"}"
+      assert log =~
+               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:error, "something went wrong"}>
     end
 
     test "logs :ok atom" do
@@ -137,7 +153,7 @@ defmodule Errors.LogTest do
           assert result == :ok
         end)
 
-      assert log =~ "[RESULT] :ok"
+      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) :ok>
     end
 
     test "logs {:ok, value}" do
@@ -147,84 +163,143 @@ defmodule Errors.LogTest do
           assert result == {:ok, "success"}
         end)
 
-      assert log =~ "[RESULT] {:ok, \"success\"}"
-    end
-
-    test "passes through other values without logging" do
-      log =
-        capture_log([level: :info], fn ->
-          result = "random value" |> Errors.log(:all)
-          assert result == "random value"
-        end)
-
-      assert log == ""
+      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:ok, \"success\"}>
     end
   end
 
   describe "Errors.log/2 log levels" do
-    test "errors results log at level: :error" do
-      # {:error, _}
+    # :error results
+    test "{:error, _} logs at level: :error - shows app line if app configured" do
+      Application.put_env(:errors, :app, :errors)
+
       log =
         capture_log([level: :error], fn ->
-          {:error, "test"} |> Errors.log(:error)
+          {:error, "test"} |> Errors.TestHelper.run_log(:errors)
         end)
 
-      assert log =~ "[RESULT] {:error, \"test\"}"
+      assert log =~ ~r<\[RESULT\] \(lib/errors/test_helper\.ex:\d+\) {:error, "test"}>
 
       # Should not appear at warning level
       log =
         capture_log([level: :critical], fn ->
-          {:error, "test"} |> Errors.log(:error)
+          {:error, "test"} |> Errors.TestHelper.run_log(:errors)
         end)
 
-      refute log =~ "RESULT"
+      refute log =~ ~r<RESULT>
+    end
 
-      # :error
+    test "{:error, _} logs at level: :error - shows best default line if app not configured " do
       log =
         capture_log([level: :error], fn ->
-          :error |> Errors.log(:error)
+          {:error, "test"} |> Errors.log(:errors)
         end)
 
-      assert log =~ "[RESULT] :error"
+      # With no app configured, it defaults to the first level up
+      assert log =~ ~r<\[RESULT\] \(lib/ex_unit/capture_log\.ex:\d+\) {:error, "test"}>
+    end
+
+    test ":error logs at level: :error" do
+      Application.put_env(:errors, :app, :errors)
+
+      log =
+        capture_log([level: :error], fn ->
+          :error |> Errors.TestHelper.run_log(:errors)
+        end)
+
+      assert log =~ ~r<\[RESULT\] \(lib/errors/test_helper\.ex:\d+\) :error>
 
       # Should not appear at warning level
       log =
         capture_log([level: :critical], fn ->
-          :error |> Errors.log(:error)
+          :error |> Errors.TestHelper.run_log(:errors)
         end)
 
       refute log =~ "RESULT"
     end
 
-    test "ok results log at level: :info" do
-      # {:ok, _}
+    test "app configured, but :error result occurs where stacktrace does not have app" do
+      Application.put_env(:errors, :app, :errors)
+
       log =
-        capture_log([level: :info], fn ->
-          {:ok, 123} |> Errors.log(:all)
+        capture_log([level: :error], fn ->
+          :error |> Errors.log(:errors)
         end)
 
-      assert log =~ "[RESULT] {:ok, 123}"
+      assert log =~ ~r<\[RESULT\] \(lib/ex_unit/capture_log.ex:\d+\) :error>
+    end
+
+    # TODO: Show that :ok results don't log when logging :errors
+    # :ok results
+    test "{:ok, _} logs at level: :ok - shows app line if app configured" do
+      Application.put_env(:errors, :app, :all)
+
+      log =
+        capture_log([level: :info], fn ->
+          {:ok, "test"} |> Errors.TestHelper.run_log(:all)
+        end)
+
+      assert log =~ ~r<\[RESULT\] \(lib/errors/test_helper\.ex:\d+\) {:ok, "test"}>
 
       # Should not appear at warning level
       log =
         capture_log([level: :notice], fn ->
-          {:ok, 123} |> Errors.log(:all)
+          {:ok, "test"} |> Errors.TestHelper.run_log(:all)
+        end)
+
+      refute log =~ ~r<RESULT>
+    end
+
+    test "{:ok, _} logs at level: :error - shows best default line if app not configured " do
+      log =
+        capture_log([level: :info], fn ->
+          {:ok, "test"} |> Errors.log(:all)
+        end)
+
+      # With no app configured, it defaults to the first level up
+      assert log =~ ~r<\[RESULT\] \(lib/ex_unit/capture_log\.ex:\d+\) {:ok, "test"}>
+    end
+
+    test ":ok logs at level: :error" do
+      Application.put_env(:errors, :app, :all)
+
+      log =
+        capture_log([level: :info], fn ->
+          :ok |> Errors.TestHelper.run_log(:all)
+        end)
+
+      assert log =~ ~r<\[RESULT\] \(lib/errors/test_helper\.ex:\d+\) :ok>
+
+      # Should not appear at warning level
+      log =
+        capture_log([level: :notice], fn ->
+          :ok |> Errors.TestHelper.run_log(:all)
+        end)
+
+      refute log =~ "RESULT"
+    end
+
+    test "app configured, but :ok result occurs where stacktrace does not have app" do
+      Application.put_env(:errors, :app, :all)
+
+      log =
+        capture_log([level: :info], fn ->
+          :ok |> Errors.log(:all)
+        end)
+
+      assert log =~ ~r<\[RESULT\] \(lib/ex_unit/capture_log.ex:\d+\) :ok>
+    end
+
+    test "no logs at any level if :ok result and mode is :errors" do
+      log =
+        capture_log([level: :debug], fn ->
+          :ok |> Errors.log(:errors)
         end)
 
       refute log =~ "RESULT"
 
-      # :ok
       log =
-        capture_log([level: :info], fn ->
-          :ok |> Errors.log(:all)
-        end)
-
-      assert log =~ "[RESULT] :ok"
-
-      # Should not appear at warning level
-      log =
-        capture_log([level: :notice], fn ->
-          :ok |> Errors.log(:all)
+        capture_log([level: :debug], fn ->
+          {:ok, 123} |> Errors.log(:errors)
         end)
 
       refute log =~ "RESULT"
