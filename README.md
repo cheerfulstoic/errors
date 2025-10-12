@@ -47,7 +47,8 @@ end
 {:error, reason} = Users.create_user(%{name: "Alice", email: "alice@example.com"})
 
 Exception.message(reason)
-# => [CONTEXT: create user] {:error, %Ecto.Changeset{...}}
+# => {:error, #Ecto.Changeset<...>}
+#        [CONTEXT] lib/my_app/users.ex:10: create user
 ```
 
 See the description of `Errors.user_message` below for how wrapped errors can be useful without you needing to work with them directly.
@@ -78,7 +79,7 @@ end
 
 # When Users.create_user returns an error, a log is written at the `error` log level:
 
-# [error] [RESULT] (lib/api/user_controller.ex:4) {:error, %Ecto.Changeset{...}}
+# [error] [RESULT] lib/api/user_controller.ex:4: {:error, #Ecto.Changeset<...>}
 ```
 
 #### Logging All Results (`:all` mode)
@@ -86,7 +87,7 @@ end
 In the case above, instead of calling `|> log(:errors)`  we could call `|> log(:all)`. In that case we could get the error log above, or we could get a success result written to the log at the `info` level:
 
 ```elixir
-# [info] [RESULT] (lib/api/user_controller.ex:4) {:ok, %MyApp.Users.User{...}}
+# [info] [RESULT] lib/api/user_controller.ex:4: {:ok, %MyApp.Users.User{...}}
 ```
 
 #### Configuring your app name
@@ -103,10 +104,10 @@ defmodule MyAppWeb.UserController do
     # ...
 
 # The line in the log might look something like:
-# [info] [RESULT] (lib/some_library.ex:4) {:error, %Ecto.Changeset{...}}
+# [error] [RESULT] lib/some_library.ex:4: {:error, #Ecto.Changeset<...>}
 
 # Where you would like it to show:
-# [info] [RESULT] (lib/my_app_web/user_controller.ex:5) {:error, %Ecto.Changeset{...}}
+# [error] [RESULT] lib/my_app_web/user_controller.ex:5: {:error, #Ecto.Changeset<...>}
 ```
 
 In order to help log the correct entries from the stacktrace, you can optionally configure our app's name to help it be found:
@@ -147,7 +148,7 @@ In this case, you could imagine that `MyApp.Users.create_user(params)` could ret
 # A struct containing errors
 {:error, %Ecto.Changeset{...}}
 # An exception value
-{:error, %%Jason.DecodeError{{...}}
+{:error, %Jason.DecodeError{...}
 ```
 
 `Errors.user_message` always turns the `reason` into a string and does it's best to extract the appropriate data for a human-readable string.
