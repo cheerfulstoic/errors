@@ -163,14 +163,12 @@ defmodule Errors.WrappedErrorTest do
     end
 
     test "reason is exception with no ability to get a message" do
-      {wrapped_error, log} =
-        with_log([level: :warning], fn ->
-          WrappedError.new(
-            {:error, %TestWithoutMessageError{status: :unknown}},
-            "fobbing a widget",
-            []
-          )
-        end)
+      wrapped_error =
+        WrappedError.new(
+          {:error, %TestWithoutMessageError{status: :unknown}},
+          "fobbing a widget",
+          []
+        )
 
       log =
         capture_log([level: :warning], fn ->

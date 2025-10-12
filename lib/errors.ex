@@ -7,7 +7,7 @@ defmodule Errors do
   require Logger
   require Stacktrace
 
-  def wrap_context(:ok, context, meta \\ %{}), do: :ok
+  def wrap_context(result, context, meta \\ %{})
 
   def wrap_context(:ok, _context, _meta), do: :ok
 
@@ -78,8 +78,6 @@ defmodule Errors do
   end
 
   def log(result, mode) do
-    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-
     stacktrace_line =
       Stacktrace.calling_stacktrace()
       |> Stacktrace.most_relevant_entry()
@@ -93,7 +91,7 @@ defmodule Errors do
         {:error, %Errors.WrappedError{} = reason} ->
           {:error, Exception.message(reason)}
 
-        {:error, reason} ->
+        {:error, _} ->
           case reason_metadata(result) do
             %{mod: mod, message: message} ->
               {:error, "{:error, %#{inspect(mod)}{...}} (message: #{message})"}
