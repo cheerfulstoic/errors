@@ -8,7 +8,8 @@ defmodule Errors.WrappedError do
   # but also create `message/1` callback in case an exception is created manually
   # See: https://hexdocs.pm/elixir/Exception.html#c:message/1
 
-  def new(result, context, stacktrace, metadata \\ %{}) when is_binary(context) do
+  def new(result, context, stacktrace, metadata \\ %{})
+      when is_binary(context) or is_nil(context) do
     reason =
       case result do
         :error ->
@@ -33,12 +34,19 @@ defmodule Errors.WrappedError do
     %{exception | message: message(exception)}
   end
 
-  def message(%__MODULE__{} = error) when is_binary(error.context) do
+  def message(%__MODULE__{} = error) when is_binary(error.context) or is_nil(error.context) do
     {errors, root_result} = unwrap(error)
 
     context_string =
       errors
-      |> Enum.map(&"    [CONTEXT] #{format_line(&1)}#{&1.context}#{format_metadata(&1)}")
+      |> Enum.map(fn error ->
+        parts_string =
+          [format_line(error), error.context, format_metadata(error)]
+          |> Enum.reject(&is_nil/1)
+          |> Enum.join(" ")
+
+        "    [CONTEXT] #{parts_string}"
+      end)
       |> Enum.join("\n")
 
     reason_message =
@@ -64,22 +72,18 @@ defmodule Errors.WrappedError do
   end
 
   defp format_line(error) do
-    error.stacktrace
-    |> Stacktrace.most_relevant_entry()
-    |> case do
-      nil ->
-        nil
+    entry =
+      error.stacktrace
+      |> Stacktrace.most_relevant_entry()
 
-      entry ->
-        Stacktrace.format_file_line(entry)
+    if entry do
+      Stacktrace.format_file_line(entry)
     end
   end
 
   defp format_metadata(error) do
-    if map_size(error.metadata) == 0 do
-      ""
-    else
-      " " <> inspect(error.metadata)
+    if map_size(error.metadata) > 0 do
+      inspect(error.metadata)
     end
   end
 end

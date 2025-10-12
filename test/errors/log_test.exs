@@ -78,7 +78,32 @@ defmodule Errors.LogTest do
       assert log =~
                ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, :failed}
     \[CONTEXT\] lib/errors/test_helper.ex:10: fooing the bar>
+    end
 
+    test "WrappedError with nil context" do
+      exception =
+        Errors.WrappedError.new(
+          {:error, :failed},
+          nil,
+          [
+            # Made up stacktrace line using a real module so we get a realistic-ish line/number
+            {Errors.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
+          ],
+          %{foo: 123, bar: "baz"}
+        )
+
+      log =
+        capture_log([level: :error], fn ->
+          result = {:error, exception} |> Errors.log(:errors)
+          assert result == {:error, exception}
+        end)
+
+      assert log =~
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, :failed}
+    \[CONTEXT\] lib/errors/test_helper.ex:10: %{foo: 123, bar: \"baz\"}>
+    end
+
+    test "Nested WrappedError" do
       # Nested
       exception =
         Errors.WrappedError.new(

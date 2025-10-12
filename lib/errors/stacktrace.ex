@@ -27,9 +27,9 @@ defmodule Errors.Stacktrace do
     line = Keyword.get(location, :line)
 
     cond do
-      is_nil(file) -> ""
+      is_nil(file) -> nil
       is_nil(line) or line == 0 -> "#{file}:"
-      true -> "#{file}:#{line}: "
+      true -> "#{file}:#{line}:"
     end
   end
 end

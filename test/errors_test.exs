@@ -35,6 +35,19 @@ defmodule ErrorsTest do
               :"test .wrap_context with {:error, _} wraps the error in a WrappedError", 1,
               [file: ~c"test/errors_test.exs", line: _]} =
                List.first(wrapped_error.stacktrace)
+
+      # no context
+      {:error, %WrappedError{} = wrapped_error} =
+        Errors.wrap_context({:error, :some_reason}, foo: :bar)
+
+      assert wrapped_error.reason == :some_reason
+      assert wrapped_error.context == nil
+      assert wrapped_error.metadata == %{foo: :bar}
+
+      assert {ErrorsTest,
+              :"test .wrap_context with {:error, _} wraps the error in a WrappedError", 1,
+              [file: ~c"test/errors_test.exs", line: _]} =
+               List.first(wrapped_error.stacktrace)
     end
 
     test "with :error wraps the error in a WrappedError" do
@@ -56,6 +69,18 @@ defmodule ErrorsTest do
 
       assert wrapped_error.reason == nil
       assert wrapped_error.context == "doing something"
+      assert wrapped_error.metadata == %{foo: :bar}
+
+      assert {ErrorsTest, :"test .wrap_context with :error wraps the error in a WrappedError", 1,
+              [file: ~c"test/errors_test.exs", line: _]} =
+               List.first(wrapped_error.stacktrace)
+
+      # no context
+      {:error, %WrappedError{} = wrapped_error} =
+        Errors.wrap_context(:error, foo: :bar)
+
+      assert wrapped_error.reason == nil
+      assert wrapped_error.context == nil
       assert wrapped_error.metadata == %{foo: :bar}
 
       assert {ErrorsTest, :"test .wrap_context with :error wraps the error in a WrappedError", 1,

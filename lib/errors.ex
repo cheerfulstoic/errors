@@ -7,6 +7,24 @@ defmodule Errors do
   require Logger
   require Stacktrace
 
+  def wrap_context(:ok, _meta), do: :ok
+
+  def wrap_context({:ok, result}, _meta) do
+    {:ok, result}
+  end
+
+  def wrap_context(:error, metadata) do
+    stacktrace = Stacktrace.calling_stacktrace()
+
+    {:error, Errors.WrappedError.new(:error, nil, stacktrace, metadata)}
+  end
+
+  def wrap_context({:error, reason}, metadata) do
+    stacktrace = Stacktrace.calling_stacktrace()
+
+    {:error, Errors.WrappedError.new({:error, reason}, nil, stacktrace, metadata)}
+  end
+
   def wrap_context(result, context, meta \\ %{})
 
   def wrap_context(:ok, _context, _meta), do: :ok
@@ -117,7 +135,12 @@ defmodule Errors do
       end
 
     with {level, message} <- log_spec do
-      Logger.log(level, "[RESULT] #{stacktrace_line}#{message}")
+      parts_string =
+        [stacktrace_line, message]
+        |> Enum.reject(&is_nil/1)
+        |> Enum.join(" ")
+
+      Logger.log(level, "[RESULT] #{parts_string}")
     end
 
     result
