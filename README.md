@@ -1,14 +1,16 @@
 # Errors
 
-A lightweight Elixir library for enhanced handling of **results** (`{:ok, _}`/`:ok`/`{:error, _}`/`:error`) with context wrapping, logging, and user message generation.
+A lightweight Elixir library for enhanced handling of **results** (`{:ok, _}` / `:ok` / `{:error, _}` / `:error`) with context wrapping, logging, and user message generation.
 
 ## Features
 
-This package provides three levels of working with errors which are **all usable independently of each other**:
+This package provides three levels of working with errors which are all **usable independently**, but which all complement each other.
 
 - **Context Wrapping**: Add meaningful context to errors as they bubble up through your application
 - **Result Logging**: Log errors (and optionally successes) with file/line information
 - **User-friendly errors**: Be able to collapse errors into a single user error message
+
+The design goal was to use standard return results and standard tools like Elixir Exception structs so that you never end up with anything out of the ordinary.
 
 ## Installation
 
@@ -26,8 +28,7 @@ end
 
 ### Context Wrapping
 
-The `wrap_context/3` function adds context (a label + optional metadata) to any errors which come out of a piece of code.
-This is especially useful for understanding where a failure came from:
+The `wrap_context/3` function adds context (a label + optional metadata) to any errors which come out of a piece of code. This is especially useful for understanding where a failure came from:
 
 ```elixir
 defmodule Users do
@@ -42,16 +43,18 @@ defmodule Users do
   end
 end
 
-# When an error occurs, you get rich context:
-{:error, wrapped_error} = Users.create_user(%{name: "Alice", email: "alice@example.com"})
-Exception.message(wrapped_error)
+# When an error occurs, you get a `reason` which is a `Errors.WrappedError` exception struct.
+{:error, reason} = Users.create_user(%{name: "Alice", email: "alice@example.com"})
+
+Exception.message(reason)
 # => [CONTEXT: create user] {:error, %Ecto.Changeset{...}}
 ```
 
+See the description of `Errors.user_message` below for how wrapped errors can be useful without you needing to work with them directly.
+
 ### Logging
 
-The `log/2` function logs results and passes them through unchanged,
-making it perfect for debugging pipelines.
+The `log/2` function logs results and passes them through unchanged, making it perfect for debugging pipelines.
 
 #### Logging Errors Only (`:errors` mode)
 
@@ -80,7 +83,7 @@ end
 
 #### Logging All Results (`:all` mode)
 
-In the case above, instead of calling `Errors.log(:errors)`  we could call `Errors.log(:all)`. In that case we could get the error log above, or we could get a success result written to the log at the `info` level:
+In the case above, instead of calling `|> log(:errors)`  we could call `|> log(:all)`. In that case we could get the error log above, or we could get a success result written to the log at the `info` level:
 
 ```elixir
 # [info] [RESULT] (lib/api/user_controller.ex:4) {:ok, %MyApp.Users.User{...}}
@@ -115,12 +118,7 @@ config :errors, :app, :your_app_name
 
 ### User-friendly output
 
-It's possible that you might have some code, be it in a LiveView, controller, background worker, etc...
-Often code at this "top level" might have called a series of functions which call a further series of functions,
-all of which can potentially return ok/error results.  When getting back `{:error, _}` tuples specifically,
-often the value inside of the tuple could be one of many things (e.g. a string/atom/struct/exception, etc...)
-Often the simplest thing to do is to return something like `There was an error: #{inspect(reason)}`, but
-that value often won't make sense to the user.  So we should find a way to make it human-readable, whenever possible.
+It's possible that you might have some code, be it in a LiveView, controller, background worker, etc... Often code at this "top level" might have called a series of functions which call a further series of functions, all of which can potentially return ok/error results.  When getting back `{:error, _}` tuples specifically, often the value inside of the tuple could be one of many things (e.g. a string/atom/struct/exception, etc...) Often the simplest thing to do is to return something like `There was an error: #{inspect(reason)}`, but that value often won't make sense to the user.  So we should find a way to make it human-readable, whenever possible.
 
 ```elixir
 defmodule MyAppWeb.UserController do
@@ -154,7 +152,7 @@ In this case, you could imagine that `MyApp.Users.create_user(params)` could ret
 
 `Errors.user_message` always turns the `reason` into a string and does it's best to extract the appropriate data for a human-readable string.
 
-Additionally, if you use `Errors.wrap_context`, additional information will be available to help describe the error.
+Additionally, if you use `Errors.wrap_context`, additional information from the `WrappedError` will be available to help describe the error.
 
 ## API Reference
 
