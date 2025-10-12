@@ -34,11 +34,11 @@ defmodule Errors.WrappedError do
   end
 
   def message(%__MODULE__{} = error) when is_binary(error.context) do
-    {details, root_result} = unwrap(error)
+    {errors, root_result} = unwrap(error)
 
     context_string =
-      details
-      |> Enum.map(&"    [CONTEXT] #{&1.formatted_line}#{&1.context}")
+      errors
+      |> Enum.map(&"    [CONTEXT] #{format_line(&1)}#{&1.context}#{format_metadata(&1)}")
       |> Enum.join("\n")
 
     reason_message =
@@ -53,23 +53,18 @@ defmodule Errors.WrappedError do
     "#{reason_message}\n#{context_string}"
   end
 
-  defp unwrap(%__MODULE__{
-         reason: %__MODULE__{} = nested_error,
-         context: context,
-         stacktrace: stacktrace
-       }) do
-    {nested_context, root_result} = unwrap(nested_error)
+  defp unwrap(%__MODULE__{reason: %__MODULE__{} = nested_error} = error) do
+    {nested_errors, root_result} = unwrap(nested_error)
 
-    {[%{context: context, formatted_line: formatted_line(stacktrace)} | nested_context],
-     root_result}
+    {[error | nested_errors], root_result}
   end
 
-  defp unwrap(%__MODULE__{result: result, context: context, stacktrace: stacktrace}) do
-    {[%{context: context, formatted_line: formatted_line(stacktrace)}], result}
+  defp unwrap(%__MODULE__{} = error) do
+    {[error], error.result}
   end
 
-  defp formatted_line(stacktrace) do
-    stacktrace
+  defp format_line(error) do
+    error.stacktrace
     |> Stacktrace.most_relevant_entry()
     |> case do
       nil ->
@@ -77,6 +72,14 @@ defmodule Errors.WrappedError do
 
       entry ->
         Stacktrace.format_file_line(entry)
+    end
+  end
+
+  defp format_metadata(error) do
+    if map_size(error.metadata) == 0 do
+      ""
+    else
+      " " <> inspect(error.metadata)
     end
   end
 end

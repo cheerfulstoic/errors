@@ -89,12 +89,14 @@ defmodule Errors.LogTest do
              [
                {Errors.TestHelper, :made_up_function, 0,
                 [file: ~c"lib/errors/test_helper.ex", line: 18]}
-             ]
+             ],
+             %{foo: 123, bar: "baz"}
            )},
           "higher up",
           [
             {Errors.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
-          ]
+          ],
+          %{something: %{whatever: :hello}}
         )
 
       log =
@@ -105,8 +107,8 @@ defmodule Errors.LogTest do
 
       assert log =~
                ~r<\[RESULT\] test/errors/log_test\.exs:\d+: RuntimeError: an example error message
-    \[CONTEXT\] lib/errors/test_helper.ex:10: higher up
-    \[CONTEXT\] lib/errors/test_helper.ex:18: lower down>
+    \[CONTEXT\] lib/errors/test_helper.ex:10: higher up | %{foo: 123, bar: "baz"}
+    \[CONTEXT\] lib/errors/test_helper.ex:18: lower down | %{something: %{whatever: :hello}}>
 
       # ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) \[CONTEXT: higher up =\> lower down\] RuntimeError: an example error message>
     end
