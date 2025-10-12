@@ -10,6 +10,15 @@ defmodule ErrorsTest do
     end
 
     test "with {:error, _} wraps the error in a WrappedError" do
+      # keyword list
+      {:error, %WrappedError{} = wrapped_error} =
+        Errors.wrap_context({:error, :some_reason}, "doing something", foo: :bar)
+
+      assert wrapped_error.reason == :some_reason
+      assert wrapped_error.context == "doing something"
+      assert wrapped_error.metadata == %{foo: :bar}
+
+      # map
       {:error, %WrappedError{} = wrapped_error} =
         Errors.wrap_context({:error, :some_reason}, "doing something", %{foo: :bar})
 
@@ -19,6 +28,15 @@ defmodule ErrorsTest do
     end
 
     test "with :error wraps the error in a WrappedError" do
+      # keyword list
+      {:error, %WrappedError{} = wrapped_error} =
+        Errors.wrap_context(:error, "doing something", foo: :bar)
+
+      assert wrapped_error.reason == nil
+      assert wrapped_error.context == "doing something"
+      assert wrapped_error.metadata == %{foo: :bar}
+
+      # map
       {:error, %WrappedError{} = wrapped_error} =
         Errors.wrap_context(:error, "doing something", %{foo: :bar})
 

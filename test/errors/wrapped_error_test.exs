@@ -14,6 +14,16 @@ defmodule Errors.WrappedErrorTest do
       assert wrapped_error.metadata == %{}
       assert wrapped_error.message == "[CONTEXT: fobbing a widget] nil"
 
+      # keyword list
+      %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", a: 1)
+
+      assert wrapped_error.result == :error
+      assert wrapped_error.reason == nil
+      assert wrapped_error.context == "fobbing a widget"
+      assert wrapped_error.metadata == %{a: 1}
+      assert wrapped_error.message == "[CONTEXT: fobbing a widget] nil"
+
+      # map
       %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", %{a: 1})
 
       assert wrapped_error.result == :error
@@ -32,6 +42,17 @@ defmodule Errors.WrappedErrorTest do
       assert wrapped_error.metadata == %{}
       assert wrapped_error.message == "[CONTEXT: fobbing a widget] :something"
 
+      # keyword list
+      %WrappedError{} =
+        wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", a: 1)
+
+      assert wrapped_error.result == {:error, :something}
+      assert wrapped_error.reason == :something
+      assert wrapped_error.context == "fobbing a widget"
+      assert wrapped_error.metadata == %{a: 1}
+      assert wrapped_error.message == "[CONTEXT: fobbing a widget] :something"
+
+      # map
       %WrappedError{} =
         wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", %{a: 1})
 

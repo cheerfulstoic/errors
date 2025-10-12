@@ -24,7 +24,7 @@ defmodule Errors.WrappedError do
         result: result,
         reason: reason,
         context: context,
-        metadata: metadata
+        metadata: Map.new(metadata)
       }
 
     %{exception | message: message(exception)}
