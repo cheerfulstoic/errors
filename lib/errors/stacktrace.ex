@@ -21,4 +21,15 @@ defmodule Errors.Stacktrace do
       List.first(stacktrace)
     end
   end
+
+  def format_file_line({_mod, _func, _arity, location}) do
+    file = Keyword.get(location, :file)
+    line = Keyword.get(location, :line)
+
+    cond do
+      is_nil(file) -> ""
+      is_nil(line) or line == 0 -> "#{file}:"
+      true -> "#{file}:#{line}: "
+    end
+  end
 end

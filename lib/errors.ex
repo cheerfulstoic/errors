@@ -16,13 +16,15 @@ defmodule Errors do
   end
 
   def wrap_context(:error, context, metadata) do
-    # Stacktrace.calling_stacktrace()
+    stacktrace = Stacktrace.calling_stacktrace()
 
-    {:error, Errors.WrappedError.new(:error, context, metadata)}
+    {:error, Errors.WrappedError.new(:error, context, stacktrace, metadata)}
   end
 
   def wrap_context({:error, reason}, context, metadata) do
-    {:error, Errors.WrappedError.new({:error, reason}, context, metadata)}
+    stacktrace = Stacktrace.calling_stacktrace()
+
+    {:error, Errors.WrappedError.new({:error, reason}, context, stacktrace, metadata)}
   end
 
   # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
@@ -54,7 +56,7 @@ defmodule Errors do
   #   {:error}
   # end
   #
-  def reason_metadata(%mod{} = exception) when is_exception(exception) do
+  def reason_metadata({:error, %mod{} = exception}) when is_exception(exception) do
     %{
       message: exception_message(exception),
       mod: mod
@@ -81,7 +83,7 @@ defmodule Errors do
     stacktrace_line =
       Stacktrace.calling_stacktrace()
       |> Stacktrace.most_relevant_entry()
-      |> format_file_line()
+      |> Stacktrace.format_file_line()
 
     log_spec =
       case result do
@@ -92,12 +94,12 @@ defmodule Errors do
           {:error, Exception.message(reason)}
 
         {:error, reason} ->
-          case reason_metadata(reason) do
+          case reason_metadata(result) do
             %{mod: mod, message: message} ->
               {:error, "{:error, %#{inspect(mod)}{...}} (message: #{message})"}
 
             %{message: message} ->
-              {:error, "{:error, #{message}}"}
+              {:error, "#{message}"}
           end
 
         :ok ->
@@ -117,20 +119,9 @@ defmodule Errors do
       end
 
     with {level, message} <- log_spec do
-      Logger.log(level, "[RESULT] #{stacktrace_line} #{message}")
+      Logger.log(level, "[RESULT] #{stacktrace_line}#{message}")
     end
 
     result
-  end
-
-  defp format_file_line({_mod, _func, _arity, location}) do
-    file = Keyword.get(location, :file)
-    line = Keyword.get(location, :line)
-
-    cond do
-      is_nil(file) -> ""
-      is_nil(line) or line == 0 -> "(#{file})"
-      true -> "(#{file}:#{line})"
-    end
   end
 end

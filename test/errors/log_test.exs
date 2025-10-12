@@ -25,7 +25,7 @@ defmodule Errors.LogTest do
           assert result == :error
         end)
 
-      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) :error>
+      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: :error>
     end
 
     test "logs and passes through {:error, binary}" do
@@ -36,7 +36,7 @@ defmodule Errors.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:error, \"something went wrong\"}>
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, \"something went wrong\"}>
     end
 
     test "logs and passes through {:error, atom}" do
@@ -46,7 +46,7 @@ defmodule Errors.LogTest do
           assert result == {:error, :timeout}
         end)
 
-      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:error, :timeout}>
+      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, :timeout}>
     end
 
     test "logs and passes through {:error, exception}" do
@@ -59,11 +59,15 @@ defmodule Errors.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:error, %RuntimeError{\.\.\.}} \(message: an example error message\)>
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, %RuntimeError{\.\.\.}} \(message: an example error message\)>
     end
 
     test "logs and passes through {:error, %Errors.WrappedError{}}" do
-      exception = Errors.WrappedError.new({:error, :failed}, "fooing the bar")
+      exception =
+        Errors.WrappedError.new({:error, :failed}, "fooing the bar", [
+          # Made up stacktrace line using a real module so we get a realistic-ish line/number
+          {Errors.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
+        ])
 
       log =
         capture_log([level: :error], fn ->
@@ -72,7 +76,8 @@ defmodule Errors.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) \[CONTEXT: fooing the bar\] :failed>
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, :failed}
+    \[CONTEXT\] lib/errors/test_helper.ex:10: fooing the bar>
 
       # Nested
       exception =
@@ -80,9 +85,16 @@ defmodule Errors.LogTest do
           {:error,
            Errors.WrappedError.new(
              {:error, %RuntimeError{message: "an example error message"}},
-             "lower down"
+             "lower down",
+             [
+               {Errors.TestHelper, :made_up_function, 0,
+                [file: ~c"lib/errors/test_helper.ex", line: 18]}
+             ]
            )},
-          "higher up"
+          "higher up",
+          [
+            {Errors.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
+          ]
         )
 
       log =
@@ -92,7 +104,11 @@ defmodule Errors.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) \[CONTEXT: higher up =\> lower down\] RuntimeError: an example error message>
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: RuntimeError: an example error message
+    \[CONTEXT\] lib/errors/test_helper.ex:10: higher up
+    \[CONTEXT\] lib/errors/test_helper.ex:18: lower down>
+
+      # ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) \[CONTEXT: higher up =\> lower down\] RuntimeError: an example error message>
     end
 
     test "does not log :ok atom" do
@@ -132,7 +148,7 @@ defmodule Errors.LogTest do
           assert result == :error
         end)
 
-      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) :error>
+      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: :error>
     end
 
     test "logs {:error, binary}" do
@@ -143,7 +159,7 @@ defmodule Errors.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:error, "something went wrong"}>
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, "something went wrong"}>
     end
 
     test "logs :ok atom" do
@@ -153,7 +169,7 @@ defmodule Errors.LogTest do
           assert result == :ok
         end)
 
-      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) :ok>
+      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: :ok>
     end
 
     test "logs {:ok, value}" do
@@ -163,7 +179,7 @@ defmodule Errors.LogTest do
           assert result == {:ok, "success"}
         end)
 
-      assert log =~ ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) {:ok, \"success\"}>
+      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:ok, \"success\"}>
     end
   end
 
@@ -177,7 +193,7 @@ defmodule Errors.LogTest do
           {:error, "test"} |> Errors.TestHelper.run_log(:errors)
         end)
 
-      assert log =~ ~r<\[RESULT\] \(lib/errors/test_helper\.ex:\d+\) {:error, "test"}>
+      assert log =~ ~r<\[RESULT\] lib/errors/test_helper\.ex:\d+: {:error, "test"}>
 
       # Should not appear at warning level
       log =
@@ -195,7 +211,7 @@ defmodule Errors.LogTest do
         end)
 
       # With no app configured, it defaults to the first level up
-      assert log =~ ~r<\[RESULT\] \(lib/ex_unit/capture_log\.ex:\d+\) {:error, "test"}>
+      assert log =~ ~r<\[RESULT\] lib/ex_unit/capture_log\.ex:\d+: {:error, "test"}>
     end
 
     test ":error logs at level: :error" do
@@ -206,7 +222,7 @@ defmodule Errors.LogTest do
           :error |> Errors.TestHelper.run_log(:errors)
         end)
 
-      assert log =~ ~r<\[RESULT\] \(lib/errors/test_helper\.ex:\d+\) :error>
+      assert log =~ ~r<\[RESULT\] lib/errors/test_helper\.ex:\d+: :error>
 
       # Should not appear at warning level
       log =
@@ -225,7 +241,7 @@ defmodule Errors.LogTest do
           :error |> Errors.log(:errors)
         end)
 
-      assert log =~ ~r<\[RESULT\] \(lib/ex_unit/capture_log.ex:\d+\) :error>
+      assert log =~ ~r<\[RESULT\] lib/ex_unit/capture_log.ex:\d+: :error>
     end
 
     # TODO: Show that :ok results don't log when logging :errors
@@ -238,7 +254,7 @@ defmodule Errors.LogTest do
           {:ok, "test"} |> Errors.TestHelper.run_log(:all)
         end)
 
-      assert log =~ ~r<\[RESULT\] \(lib/errors/test_helper\.ex:\d+\) {:ok, "test"}>
+      assert log =~ ~r<\[RESULT\] lib/errors/test_helper\.ex:\d+: {:ok, "test"}>
 
       # Should not appear at warning level
       log =
@@ -256,7 +272,7 @@ defmodule Errors.LogTest do
         end)
 
       # With no app configured, it defaults to the first level up
-      assert log =~ ~r<\[RESULT\] \(lib/ex_unit/capture_log\.ex:\d+\) {:ok, "test"}>
+      assert log =~ ~r<\[RESULT\] lib/ex_unit/capture_log\.ex:\d+: {:ok, "test"}>
     end
 
     test ":ok logs at level: :error" do
@@ -267,7 +283,7 @@ defmodule Errors.LogTest do
           :ok |> Errors.TestHelper.run_log(:all)
         end)
 
-      assert log =~ ~r<\[RESULT\] \(lib/errors/test_helper\.ex:\d+\) :ok>
+      assert log =~ ~r<\[RESULT\] lib/errors/test_helper\.ex:\d+: :ok>
 
       # Should not appear at warning level
       log =
@@ -286,7 +302,7 @@ defmodule Errors.LogTest do
           :ok |> Errors.log(:all)
         end)
 
-      assert log =~ ~r<\[RESULT\] \(lib/ex_unit/capture_log.ex:\d+\) :ok>
+      assert log =~ ~r<\[RESULT\] lib/ex_unit/capture_log.ex:\d+: :ok>
     end
 
     test "no logs at any level if :ok result and mode is :errors" do

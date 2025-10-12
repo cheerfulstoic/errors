@@ -6,99 +6,102 @@ defmodule Errors.WrappedErrorTest do
 
   describe ".new" do
     test ":error" do
-      %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget")
+      %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", [])
 
       assert wrapped_error.result == :error
       assert wrapped_error.reason == nil
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{}
-      assert wrapped_error.message == "[CONTEXT: fobbing a widget] nil"
+      assert wrapped_error.message == ":error\n    [CONTEXT] fobbing a widget"
 
       # keyword list
-      %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", a: 1)
+      %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", [], a: 1)
 
       assert wrapped_error.result == :error
       assert wrapped_error.reason == nil
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{a: 1}
-      assert wrapped_error.message == "[CONTEXT: fobbing a widget] nil"
+      assert wrapped_error.message == ":error\n    [CONTEXT] fobbing a widget"
 
       # map
-      %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", %{a: 1})
+      %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", [], %{a: 1})
 
       assert wrapped_error.result == :error
       assert wrapped_error.reason == nil
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{a: 1}
-      assert wrapped_error.message == "[CONTEXT: fobbing a widget] nil"
+      assert wrapped_error.message == ":error\n    [CONTEXT] fobbing a widget"
     end
 
     test "{:error, _}" do
-      %WrappedError{} = wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget")
+      %WrappedError{} =
+        wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", [])
 
       assert wrapped_error.result == {:error, :something}
       assert wrapped_error.reason == :something
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{}
-      assert wrapped_error.message == "[CONTEXT: fobbing a widget] :something"
+      assert wrapped_error.message == "{:error, :something}\n    [CONTEXT] fobbing a widget"
 
       # keyword list
       %WrappedError{} =
-        wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", a: 1)
+        wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", [], a: 1)
 
       assert wrapped_error.result == {:error, :something}
       assert wrapped_error.reason == :something
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{a: 1}
-      assert wrapped_error.message == "[CONTEXT: fobbing a widget] :something"
+      assert wrapped_error.message == "{:error, :something}\n    [CONTEXT] fobbing a widget"
 
       # map
       %WrappedError{} =
-        wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", %{a: 1})
+        wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", [], %{a: 1})
 
       assert wrapped_error.result == {:error, :something}
       assert wrapped_error.reason == :something
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{a: 1}
-      assert wrapped_error.message == "[CONTEXT: fobbing a widget] :something"
+      assert wrapped_error.message == "{:error, :something}\n    [CONTEXT] fobbing a widget"
     end
 
     test "fails with other inputs" do
-      assert_raise ArgumentError,
-                   "Errors wrap either :error or {:error, _}, got: :ok",
-                   fn ->
-                     WrappedError.new(:ok, "fobbing a widget")
-                   end
+      assert_raise(
+        ArgumentError,
+        "Errors wrap either :error or {:error, _}, got: :ok",
+        fn ->
+          WrappedError.new(:ok, "fobbing a widget", [])
+        end
+      )
 
-      assert_raise ArgumentError,
-                   "Errors wrap either :error or {:error, _}, got: {:ok, 123}",
-                   fn ->
-                     WrappedError.new({:ok, 123}, "fobbing a widget")
-                   end
+      assert_raise(
+        ArgumentError,
+        "Errors wrap either :error or {:error, _}, got: {:ok, 123}",
+        fn ->
+          WrappedError.new({:ok, 123}, "fobbing a widget", [])
+        end
+      )
 
       assert_raise ArgumentError,
                    "Errors wrap either :error or {:error, _}, got: :some_error",
                    fn ->
-                     WrappedError.new(:some_error, "fobbing a widget")
+                     WrappedError.new(:some_error, "fobbing a widget", [])
                    end
     end
   end
 
   describe ".message" do
     test "binary reason" do
-      wrapped_error = WrappedError.new({:error, "original error message"}, "fobbing a widget")
+      wrapped_error = WrappedError.new({:error, "original error message"}, "fobbing a widget", [])
 
-      expected_message = ~S<[CONTEXT: fobbing a widget] "original error message">
-
-      assert Exception.message(wrapped_error) == expected_message
+      assert Exception.message(wrapped_error) ==
+               "{:error, \"original error message\"}\n    [CONTEXT] fobbing a widget"
     end
 
     test "atom reason" do
-      wrapped_error = WrappedError.new({:error, :original_error_status}, "fobbing a widget")
+      wrapped_error = WrappedError.new({:error, :original_error_status}, "fobbing a widget", [])
 
-      expected_message = ~S<[CONTEXT: fobbing a widget] :original_error_status>
-
-      assert Exception.message(wrapped_error) == expected_message
+      assert Exception.message(wrapped_error) ==
+               "{:error, :original_error_status}\n    [CONTEXT] fobbing a widget"
     end
 
     defmodule TestWithMessageKeyError do
@@ -109,13 +112,12 @@ defmodule Errors.WrappedErrorTest do
       wrapped_error =
         WrappedError.new(
           {:error, %TestWithMessageKeyError{message: "the message which was set"}},
-          "fobbing a widget"
+          "fobbing a widget",
+          []
         )
 
-      expected_message =
-        ~S<[CONTEXT: fobbing a widget] Errors.WrappedErrorTest.TestWithMessageKeyError: the message which was set>
-
-      assert Exception.message(wrapped_error) == expected_message
+      assert Exception.message(wrapped_error) ==
+               "Errors.WrappedErrorTest.TestWithMessageKeyError: the message which was set\n    [CONTEXT] fobbing a widget"
     end
 
     defmodule TestWithMessageCallbackError do
@@ -129,13 +131,12 @@ defmodule Errors.WrappedErrorTest do
       wrapped_error =
         WrappedError.new(
           {:error, %TestWithMessageCallbackError{status: :unknown}},
-          "fobbing a widget"
+          "fobbing a widget",
+          []
         )
 
-      expected_message =
-        ~S<[CONTEXT: fobbing a widget] Errors.WrappedErrorTest.TestWithMessageCallbackError: 🤷>
-
-      assert Exception.message(wrapped_error) == expected_message
+      assert Exception.message(wrapped_error) ==
+               "Errors.WrappedErrorTest.TestWithMessageCallbackError: 🤷\n    [CONTEXT] fobbing a widget"
     end
 
     test "nested reason is exception with message callback" do
@@ -145,16 +146,16 @@ defmodule Errors.WrappedErrorTest do
             :error,
             WrappedError.new(
               {:error, %TestWithMessageCallbackError{status: :unknown}},
-              "lower down"
+              "lower down",
+              []
             )
           },
-          "higher up"
+          "higher up",
+          []
         )
 
-      expected_message =
-        ~S<[CONTEXT: higher up =\> lower down] Errors.WrappedErrorTest.TestWithMessageCallbackError: 🤷>
-
-      assert Exception.message(wrapped_error) == expected_message
+      assert Exception.message(wrapped_error) ==
+               "Errors.WrappedErrorTest.TestWithMessageCallbackError: 🤷\n    [CONTEXT] higher up\n    [CONTEXT] lower down"
     end
 
     defmodule TestWithoutMessageError do
@@ -162,20 +163,19 @@ defmodule Errors.WrappedErrorTest do
     end
 
     test "reason is exception with no ability to get a message" do
-      expected_message =
-        ~S<[CONTEXT: fobbing a widget] Errors.WrappedErrorTest.TestWithoutMessageError: %Errors.WrappedErrorTest.TestWithoutMessageError{status: :unknown}>
-
       {wrapped_error, log} =
         with_log([level: :warning], fn ->
           WrappedError.new(
             {:error, %TestWithoutMessageError{status: :unknown}},
-            "fobbing a widget"
+            "fobbing a widget",
+            []
           )
         end)
 
       log =
         capture_log([level: :warning], fn ->
-          assert Exception.message(wrapped_error) == expected_message
+          assert Exception.message(wrapped_error) ==
+                   "Errors.WrappedErrorTest.TestWithoutMessageError: %Errors.WrappedErrorTest.TestWithoutMessageError{status: :unknown}\n    [CONTEXT] fobbing a widget"
         end)
 
       assert log =~
