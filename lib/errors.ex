@@ -21,35 +21,35 @@ defmodule Errors do
     {:error, Errors.WrappedError.new({:error, reason}, context, metadata)}
   end
 
-  def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
-
-  def telemetry(:ok, name), do: telemetry({:ok, nil}, name)
-
-  def telemetry({:ok, _} = result, name) do
-    :telemetry.execute(
-      [:errors, :ok],
-      %{count: 1},
-      %{name: name}
-    )
-
-    result
-  end
-
-  def telemetry(:error, name), do: telemetry({:error, nil}, name)
-
-  def telemetry({:error, reason}, name) do
-    :telemetry.execute(
-      [:errors, :error],
-      %{count: 1},
-      Map.merge(
-        %{name: name},
-        reason_metadata(reason)
-      )
-    )
-
-    {:error}
-  end
-
+  # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
+  #
+  # def telemetry(:ok, name), do: telemetry({:ok, nil}, name)
+  #
+  # def telemetry({:ok, _} = result, name) do
+  #   :telemetry.execute(
+  #     [:errors, :ok],
+  #     %{count: 1},
+  #     %{name: name}
+  #   )
+  #
+  #   result
+  # end
+  #
+  # def telemetry(:error, name), do: telemetry({:error, nil}, name)
+  #
+  # def telemetry({:error, reason}, name) do
+  #   :telemetry.execute(
+  #     [:errors, :error],
+  #     %{count: 1},
+  #     Map.merge(
+  #       %{name: name},
+  #       reason_metadata(reason)
+  #     )
+  #   )
+  #
+  #   {:error}
+  # end
+  #
   def reason_metadata(%mod{} = exception) when is_exception(exception) do
     %{
       message: exception_message(exception),
