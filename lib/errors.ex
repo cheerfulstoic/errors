@@ -3,7 +3,9 @@ defmodule Errors do
   Documentation for `Errors`.
   """
 
+  alias Errors.Stacktrace
   require Logger
+  require Stacktrace
 
   def wrap_context(:ok, context, meta \\ %{}), do: :ok
 
@@ -14,6 +16,8 @@ defmodule Errors do
   end
 
   def wrap_context(:error, context, metadata) do
+    # Stacktrace.calling_stacktrace()
+
     {:error, Errors.WrappedError.new(:error, context, metadata)}
   end
 
@@ -75,8 +79,8 @@ defmodule Errors do
     {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 
     stacktrace_line =
-      stacktrace
-      |> find_stacktrace_entry()
+      Stacktrace.calling_stacktrace()
+      |> Stacktrace.most_relevant_entry()
       |> format_file_line()
 
     log_spec =
@@ -117,22 +121,6 @@ defmodule Errors do
     end
 
     result
-  end
-
-  defp find_stacktrace_entry(stacktrace) do
-    # Skip `Process.info` line and the `Errors.log` line:
-    stacktrace = Enum.drop(stacktrace, 2)
-
-    if app = Application.get_env(:errors, :app) do
-      index =
-        Enum.find_index(stacktrace, fn {mod, _, _, _} ->
-          match?({:ok, ^app}, :application.get_application(mod))
-        end)
-
-      Enum.at(stacktrace, index || 0)
-    else
-      List.first(stacktrace)
-    end
   end
 
   defp format_file_line({_mod, _func, _arity, location}) do
