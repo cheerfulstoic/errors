@@ -74,6 +74,13 @@ defmodule Errors do
   #   {:error}
   # end
 
+  # Telemetry metadata:
+  #   result_type: :ok / :error
+  #   result_value:
+  #    * 123
+  #    * %MyApp.Accounts.User{id: 123, ...}
+  #    * #Ecto.Changeset<action: ..., changes: ..., ...>
+
   def result_metadata({:error, %Errors.WrappedError{} = exception}) do
     %{
       message: Exception.message(exception)
@@ -83,11 +90,12 @@ defmodule Errors do
   def result_metadata({:error, %mod{} = exception}) when is_exception(exception) do
     %{
       mod: mod,
-      message: "{:error, %#{inspect(mod)}{...}} (message: #{exception_message(exception)})"
+      message:
+        "{:error, #{Errors.Inspect.inspect(exception)}} (message: #{exception_message(exception)})"
     }
   end
 
-  def result_metadata(result), do: %{message: inspect(result)}
+  def result_metadata(result), do: %{message: Errors.Inspect.inspect(result)}
 
   defp exception_message(%mod{} = exception) when is_exception(exception) do
     if function_exported?(mod, :message, 1) or Map.has_key?(struct(mod), :message) do
@@ -117,7 +125,7 @@ defmodule Errors do
         {:error, _} ->
           %{message: message} = result_metadata(result)
 
-          {:error, "#{message}"}
+          {:error, message}
 
         :ok ->
           if mode == :all do
@@ -126,7 +134,7 @@ defmodule Errors do
 
         {:ok, value} ->
           if mode == :all do
-            {:info, "{:ok, #{inspect(value)}}"}
+            {:info, "{:ok, #{Errors.Inspect.inspect(value)}}"}
           end
 
         _ ->

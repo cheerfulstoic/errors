@@ -121,7 +121,7 @@ defmodule Errors.WrappedErrorTest do
         )
 
       assert Exception.message(wrapped_error) ==
-               "{:error, %Errors.WrappedErrorTest.TestWithMessageKeyError{...}} (message: the message which was set)\n    [CONTEXT] fobbing a widget"
+               "{:error, #Errors.WrappedErrorTest.TestWithMessageKeyError<...>} (message: the message which was set)\n    [CONTEXT] fobbing a widget"
     end
 
     defmodule TestWithMessageCallbackError do
@@ -140,7 +140,7 @@ defmodule Errors.WrappedErrorTest do
         )
 
       assert Exception.message(wrapped_error) ==
-               "{:error, %Errors.WrappedErrorTest.TestWithMessageCallbackError{...}} (message: 🤷)\n    [CONTEXT] fobbing a widget"
+               "{:error, #Errors.WrappedErrorTest.TestWithMessageCallbackError<...>} (message: 🤷)\n    [CONTEXT] fobbing a widget"
     end
 
     test "nested reason is exception with message callback" do
@@ -159,7 +159,7 @@ defmodule Errors.WrappedErrorTest do
         )
 
       assert Exception.message(wrapped_error) ==
-               "{:error, %Errors.WrappedErrorTest.TestWithMessageCallbackError{...}} (message: 🤷)\n    [CONTEXT] higher up\n    [CONTEXT] lower down"
+               "{:error, #Errors.WrappedErrorTest.TestWithMessageCallbackError<...>} (message: 🤷)\n    [CONTEXT] higher up\n    [CONTEXT] lower down"
     end
 
     defmodule TestWithoutMessageError do
@@ -177,7 +177,7 @@ defmodule Errors.WrappedErrorTest do
       log =
         capture_log([level: :warning], fn ->
           assert Exception.message(wrapped_error) ==
-                   "{:error, %Errors.WrappedErrorTest.TestWithoutMessageError{...}} (message: %Errors.WrappedErrorTest.TestWithoutMessageError{status: :unknown})\n    [CONTEXT] fobbing a widget"
+                   "{:error, #Errors.WrappedErrorTest.TestWithoutMessageError<...>} (message: %Errors.WrappedErrorTest.TestWithoutMessageError{status: :unknown})\n    [CONTEXT] fobbing a widget"
         end)
 
       assert log =~

@@ -59,7 +59,7 @@ defmodule Errors.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, %RuntimeError{\.\.\.}} \(message: an example error message\)>
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, #RuntimeError\<\.\.\.\>} \(message: an example error message\)>
     end
 
     test "logs and passes through {:error, %Errors.WrappedError{}}" do
