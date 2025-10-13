@@ -87,7 +87,7 @@ defmodule Errors do
     }
   end
 
-  def result_metadata(reason), do: %{message: inspect(reason)}
+  def result_metadata(result), do: %{message: inspect(result)}
 
   defp exception_message(%mod{} = exception) when is_exception(exception) do
     if function_exported?(mod, :message, 1) or Map.has_key?(struct(mod), :message) do
