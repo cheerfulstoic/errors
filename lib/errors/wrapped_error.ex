@@ -50,7 +50,7 @@ defmodule Errors.WrappedError do
       |> Enum.join("\n")
 
     reason_message =
-      case Errors.reason_metadata(root_result) do
+      case Errors.result_metadata(root_result) do
         %{mod: mod, message: message} ->
           "#{inspect(mod)}: #{message}"
 
@@ -92,7 +92,7 @@ end
 #   import Inspect.Algebra
 #
 #   def inspect(%{reason: reason} = wrapped_error, opts) do
-#     %{mod: mod, message: message} = Errors.reason_metadata(reason)
+#     %{mod: mod, message: message} = Errors.result_metadata(reason)
 #
 #     {concat([mod, ": ", message]), opts}
 #   end
