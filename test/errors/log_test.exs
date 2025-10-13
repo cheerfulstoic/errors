@@ -189,6 +189,56 @@ defmodule Errors.LogTest do
                ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, "something went wrong"}>
     end
 
+    test "logs Ecto.Changeset error" do
+      log =
+        capture_log([level: :info], fn ->
+          result = {:error, %Ecto.Changeset{}} |> Errors.log(:all)
+          assert result == {:error, %Ecto.Changeset{}}
+        end)
+
+      # Uses Ecto's `inspect` implementation
+      assert log =~
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, #Ecto\.Changeset\<action: nil, changes: %{}, errors: \[\], data: nil, valid\?: false, \.\.\.\>}>
+    end
+
+    defmodule CustomStruct do
+      defstruct [:id, :foo, :user_id, :bar]
+    end
+
+    test "logs custom struct" do
+      log =
+        capture_log([level: :info], fn ->
+          {:error, %CustomStruct{id: 123, foo: "thing", user_id: 456, bar: "other"}}
+          |> Errors.log(:all)
+        end)
+
+      # Uses Ecto's `inspect` implementation
+      assert log =~
+               ~r<\[RESULT\] lib\/ex_unit\/capture_log\.ex:\d+: {:error, #Errors\.LogTest\.CustomStruct\<id: 123, user_id: 456, \.\.\.\>}>
+    end
+
+    defmodule OtherCustomStruct do
+      defstruct [:id, :name, :something, :fooID]
+    end
+
+    test "logs nested custom structs" do
+      log =
+        capture_log([level: :info], fn ->
+          {:error,
+           %CustomStruct{
+             id: 123,
+             foo: "thing",
+             user_id: 456,
+             bar: %OtherCustomStruct{id: 789, name: "Cool", something: "hi", fooID: 000}
+           }}
+          |> Errors.log(:all)
+        end)
+
+      # Uses Ecto's `inspect` implementation
+      assert log =~
+               ~r<\[RESULT\] lib\/ex_unit\/capture_log\.ex:\d+: {:error, #Errors\.LogTest\.CustomStruct\<id: 123, bar: #Errors.LogTest.OtherCustomStruct\<id: 789, name: \"Cool\", fooID: 0, \.\.\.\>, user_id: 456, \.\.\.\>}>
+    end
+
     test "logs :ok atom" do
       log =
         capture_log([level: :info], fn ->

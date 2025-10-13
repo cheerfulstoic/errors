@@ -67,7 +67,7 @@ defmodule Errors do
   #     %{count: 1},
   #     Map.merge(
   #       %{name: name},
-  #       result_metadata(reason)
+  #       result_details(reason)
   #     )
   #   )
   #
@@ -81,21 +81,40 @@ defmodule Errors do
   #    * %MyApp.Accounts.User{id: 123, ...}
   #    * #Ecto.Changeset<action: ..., changes: ..., ...>
 
-  def result_metadata({:error, %Errors.WrappedError{} = exception}) do
+  def result_details({:error, %Errors.WrappedError{} = exception}) do
     %{
+      type: "error",
       message: Exception.message(exception)
     }
   end
 
-  def result_metadata({:error, %mod{} = exception}) when is_exception(exception) do
+  def result_details({:error, %mod{} = exception}) when is_exception(exception) do
     %{
+      type: "error",
       mod: mod,
       message:
         "{:error, #{Errors.Inspect.inspect(exception)}} (message: #{exception_message(exception)})"
     }
   end
 
-  def result_metadata(result), do: %{message: Errors.Inspect.inspect(result)}
+  def result_details({:error, value}) do
+    %{type: "error", message: "{:error, #{Errors.Inspect.inspect(value)}}"}
+  end
+
+  def result_details(:error) do
+    %{
+      type: "error",
+      message: Errors.Inspect.inspect(:error)
+    }
+  end
+
+  def result_details({:ok, value}) do
+    %{type: "ok", message: Errors.Inspect.inspect(value)}
+  end
+
+  def result_details(:ok) do
+    %{type: "ok", message: Errors.Inspect.inspect(:ok)}
+  end
 
   defp exception_message(%mod{} = exception) when is_exception(exception) do
     if function_exported?(mod, :message, 1) or Map.has_key?(struct(mod), :message) do
@@ -118,12 +137,12 @@ defmodule Errors do
     log_spec =
       case result do
         :error ->
-          %{message: message} = result_metadata(result)
+          %{message: message} = result_details(result)
 
           {:error, "#{message}"}
 
         {:error, _} ->
-          %{message: message} = result_metadata(result)
+          %{message: message} = result_details(result)
 
           {:error, message}
 
