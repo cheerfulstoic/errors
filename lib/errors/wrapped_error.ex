@@ -49,14 +49,7 @@ defmodule Errors.WrappedError do
       end)
       |> Enum.join("\n")
 
-    reason_message =
-      case Errors.result_metadata(root_result) do
-        %{mod: mod, message: message} ->
-          "#{inspect(mod)}: #{message}"
-
-        %{message: message} ->
-          message
-      end
+    reason_message = Errors.result_metadata(root_result).message
 
     "#{reason_message}\n#{context_string}"
   end

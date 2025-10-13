@@ -73,11 +73,17 @@ defmodule Errors do
   #
   #   {:error}
   # end
-  #
+
+  def result_metadata({:error, %Errors.WrappedError{} = exception}) do
+    %{
+      message: Exception.message(exception)
+    }
+  end
+
   def result_metadata({:error, %mod{} = exception}) when is_exception(exception) do
     %{
-      message: exception_message(exception),
-      mod: mod
+      mod: mod,
+      message: "{:error, %#{inspect(mod)}{...}} (message: #{exception_message(exception)})"
     }
   end
 
@@ -104,19 +110,14 @@ defmodule Errors do
     log_spec =
       case result do
         :error ->
-          {:error, ":error"}
+          %{message: message} = result_metadata(result)
 
-        {:error, %Errors.WrappedError{} = reason} ->
-          {:error, Exception.message(reason)}
+          {:error, "#{message}"}
 
         {:error, _} ->
-          case result_metadata(result) do
-            %{mod: mod, message: message} ->
-              {:error, "{:error, %#{inspect(mod)}{...}} (message: #{message})"}
+          %{message: message} = result_metadata(result)
 
-            %{message: message} ->
-              {:error, "#{message}"}
-          end
+          {:error, "#{message}"}
 
         :ok ->
           if mode == :all do
