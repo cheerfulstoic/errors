@@ -66,20 +66,24 @@ defmodule Errors.Inspect do
 
   def shrunken_representation(
         %Errors.WrappedError{
-          result: result,
-          stacktrace: stacktrace,
-          context: context,
-          metadata: metadata
-        },
+          # result: result,
+        } = exception,
         _sub_value?
       ) do
+    {errors, {:error, root_reason}} = Errors.WrappedError.unwrap(exception)
+
+    contexts =
+      Enum.map(errors, fn error ->
+        %{
+          label: error.context,
+          stacktrace: format_stacktrace(error.stacktrace),
+          metadata: shrunken_representation(error.metadata)
+        }
+      end)
+
     %{
-      __struct__: "Errors.WrappedError",
-      result: shrunken_representation(result),
-      result_details: Errors.result_details(result),
-      stacktrace: format_stacktrace(stacktrace),
-      context: context,
-      metadata: shrunken_representation(metadata)
+      __root_reason__: shrunken_representation(root_reason),
+      __contexts__: contexts
     }
   end
 

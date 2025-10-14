@@ -558,6 +558,69 @@ defmodule Errors.LogTest do
              }
     end
 
+    test "{:error, Errors.WrappedError.t()}" do
+      Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
+
+      exception =
+        Errors.WrappedError.new(
+          {:error,
+           Errors.WrappedError.new(
+             {:error, %RuntimeError{message: "an example error message"}},
+             "lower down",
+             [
+               {Errors.TestHelper, :made_up_function, 0,
+                [file: ~c"lib/errors/test_helper.ex", line: 18]}
+             ],
+             %{foo: 123, bar: "baz"}
+           )},
+          "higher up",
+          [
+            {Errors.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
+          ],
+          %{something: %{whatever: :hello}}
+        )
+
+      log =
+        capture_log([level: :info], fn ->
+          {:error, exception} |> Errors.log(:all)
+        end)
+
+      [_, json] = Regex.run(~r/\[error\] (.*)/, log)
+
+      data = Jason.decode!(json)
+
+      assert data["source"] == "Errors"
+      assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
+
+      assert data["result_details"]["type"] == "error"
+
+      assert data["result_details"]["message"] ==
+               "{:error, #RuntimeError<...>} (message: an example error message)\n    [CONTEXT] lib/errors/test_helper.ex:10: higher up %{something: %{whatever: :hello}}\n    [CONTEXT] lib/errors/test_helper.ex:18: lower down %{foo: 123, bar: \"baz\"}"
+
+      assert data["result_details"]["value"] == %{
+               "__contexts__" => [
+                 %{
+                   "label" => "higher up",
+                   "metadata" => %{},
+                   "stacktrace" => [
+                     "(errors 0.1.0) lib/errors/test_helper.ex:10: Errors.TestHelper.run_log/2"
+                   ]
+                 },
+                 %{
+                   "label" => "lower down",
+                   "metadata" => %{},
+                   "stacktrace" => [
+                     "(errors 0.1.0) lib/errors/test_helper.ex:18: Errors.TestHelper.made_up_function/0"
+                   ]
+                 }
+               ],
+               "__root_reason__" => %{
+                 "__message__" => "an example error message",
+                 "__struct__" => "RuntimeError"
+               }
+             }
+    end
+
     test "{:error, atom()}" do
       Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
 

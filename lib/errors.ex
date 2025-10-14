@@ -85,8 +85,8 @@ defmodule Errors do
   def result_details({:error, %Errors.WrappedError{} = exception}) do
     %{
       type: "error",
-      message: Exception.message(exception)
-      # value: Errors.Inspect.shrunken_representation(exception)
+      message: Exception.message(exception),
+      value: Errors.Inspect.shrunken_representation(exception)
     }
   end
 

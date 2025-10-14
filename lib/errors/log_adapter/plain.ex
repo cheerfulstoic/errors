@@ -4,7 +4,7 @@ defmodule Errors.LogAdapter.Plain do
   use Errors.LogAdapter
 
   @impl Errors.LogAdapter
-  def call(%{result: result} = log_details) do
+  def call(log_details) do
     level = if(log_details.result_details.type == "error", do: :error, else: :info)
 
     stacktrace_line =
