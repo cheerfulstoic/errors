@@ -16,11 +16,15 @@ defmodule Errors.Stacktrace do
           match?({:ok, ^app}, :application.get_application(mod))
         end)
 
-      Enum.at(stacktrace, index || 0)
+      if index do
+        Enum.at(stacktrace, index)
+      end
     else
       List.first(stacktrace)
     end
   end
+
+  def format_file_line(nil), do: nil
 
   def format_file_line({_mod, _func, _arity, location}) do
     file = Keyword.get(location, :file)
@@ -28,8 +32,8 @@ defmodule Errors.Stacktrace do
 
     cond do
       is_nil(file) -> nil
-      is_nil(line) or line == 0 -> "#{file}:"
-      true -> "#{file}:#{line}:"
+      is_nil(line) or line == 0 -> "#{file}"
+      true -> "#{file}:#{line}"
     end
   end
 end

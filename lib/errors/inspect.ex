@@ -14,17 +14,8 @@ defmodule Errors.Inspect do
   defp shrunken_inspect(value) do
     value
     |> shrunken_representation()
+    |> Map.delete(:__message__)
     |> inspect_shrunken_representation()
-  end
-
-  # defp shrunken_inspect(value) do
-  #   Kernel.inspect(value)
-  # end
-
-  defp attributes_string(attributes) do
-    Enum.map_join(attributes, ", ", fn {key, value} ->
-      "#{key}: #{inspect_shrunken_representation(value)}"
-    end)
   end
 
   defp inspect_shrunken_representation(%{__struct__: mod} = shrunken_representation) do
@@ -53,6 +44,18 @@ defmodule Errors.Inspect do
     Kernel.inspect(shrunken_representation)
   end
 
+  defp attributes_string(attributes) do
+    attributes
+    |> Enum.sort_by(fn
+      {:id, _} -> -1
+      {"id", _} -> -1
+      {key, _} -> to_string(key)
+    end)
+    |> Enum.map_join(", ", fn {key, value} ->
+      "#{key}: #{inspect_shrunken_representation(value)}"
+    end)
+  end
+
   # This function exists to reduce the data that is sent out (logs/teleetry) to
   # the fields that are the most useful for debugging.  Currently that is
   # just identifying fields (`id` or `*_id` fields, along with `type` fields
@@ -60,33 +63,6 @@ defmodule Errors.Inspect do
   # algorithmically identify fields which would be generically helpful when
   # debugging
   def shrunken_representation(data, sub_value? \\ false)
-
-  # def shrunken_representation(%Ecto.Changeset{changes: changes, params: params}, _sub_value?) do
-  #   %{
-  #     changes: changes,
-  #     params: params
-  #   }
-  #   |> shrunken_representation(true)
-  #   |> Map.put(:type, Macro.to_string(Ecto.Changeset))
-  # end
-  #
-  # def shrunken_representation(
-  #       %StepWise.StepFunctionError{
-  #         raised?: raised?,
-  #         value: value,
-  #         stacktrace: stacktrace,
-  #         func: func
-  #       },
-  #       _sub_value?
-  #     ) do
-  #   %{
-  #     type: "StepWise.StepFunctionError",
-  #     raised: raised?,
-  #     value: shrunken_representation(value),
-  #     stacktrace: format_stacktrace(stacktrace),
-  #     func: func
-  #   }
-  # end
 
   def shrunken_representation(
         %Errors.WrappedError{
@@ -113,6 +89,7 @@ defmodule Errors.Inspect do
     |> Map.delete(:__exception__)
     |> Map.delete(:message)
     |> Map.put(:__struct__, Macro.to_string(exception.__struct__))
+    |> Map.put(:__message__, Exception.message(exception))
 
     # TODO: shrink / reduce values?
   end

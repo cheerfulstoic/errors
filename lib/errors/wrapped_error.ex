@@ -49,18 +49,18 @@ defmodule Errors.WrappedError do
       end)
       |> Enum.join("\n")
 
-    reason_message = Errors.result_details(root_result).message
+    message = Errors.result_details(root_result).message
 
-    "#{reason_message}\n#{context_string}"
+    "#{message}\n#{context_string}"
   end
 
-  defp unwrap(%__MODULE__{reason: %__MODULE__{} = nested_error} = error) do
+  def unwrap(%__MODULE__{reason: %__MODULE__{} = nested_error} = error) do
     {nested_errors, root_result} = unwrap(nested_error)
 
     {[error | nested_errors], root_result}
   end
 
-  defp unwrap(%__MODULE__{} = error) do
+  def unwrap(%__MODULE__{} = error) do
     {[error], error.result}
   end
 
@@ -70,7 +70,9 @@ defmodule Errors.WrappedError do
       |> Stacktrace.most_relevant_entry()
 
     if entry do
-      Stacktrace.format_file_line(entry)
+      if line = Stacktrace.format_file_line(entry) do
+        "#{line}:"
+      end
     end
   end
 
@@ -89,4 +91,34 @@ end
 #
 #     {concat([mod, ": ", message]), opts}
 #   end
+# end
+
+if Code.ensure_loaded?(JSON.Encoder) do
+  defimpl JSON.Encoder, for: Errors.WrappedError do
+    def encode(error, encoder) do
+      {errors, root_result} = Errors.WrappedError.unwrap(error)
+
+      encoder.(%{
+        message: Errors.result_details(root_result).message,
+        contexts: Enum.map(errors, &%{label: &1.context, metadata: &1.metadata})
+      })
+    end
+  end
+end
+
+# if Code.ensure_loaded?(Jason.Encoder) do
+defimpl Jason.Encoder, for: Errors.WrappedError do
+  def encode(error, opts) do
+    {errors, root_result} = Errors.WrappedError.unwrap(error)
+
+    Jason.Encode.map(
+      %{
+        message: Errors.result_details(root_result).message,
+        contexts: Enum.map(errors, &%{label: &1.context, metadata: &1.metadata})
+      },
+      opts
+    )
+  end
+end
+
 # end

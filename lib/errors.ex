@@ -4,6 +4,7 @@ defmodule Errors do
   """
 
   alias Errors.Stacktrace
+  alias Errors.LogAdapter
   require Logger
   require Stacktrace
 
@@ -85,6 +86,7 @@ defmodule Errors do
     %{
       type: "error",
       message: Exception.message(exception)
+      # value: Errors.Inspect.shrunken_representation(exception)
     }
   end
 
@@ -93,12 +95,17 @@ defmodule Errors do
       type: "error",
       mod: mod,
       message:
-        "{:error, #{Errors.Inspect.inspect(exception)}} (message: #{exception_message(exception)})"
+        "{:error, #{Errors.Inspect.inspect(exception)}} (message: #{exception_message(exception)})",
+      value: Errors.Inspect.shrunken_representation(exception)
     }
   end
 
   def result_details({:error, value}) do
-    %{type: "error", message: "{:error, #{Errors.Inspect.inspect(value)}}"}
+    %{
+      type: "error",
+      message: "{:error, #{Errors.Inspect.inspect(value)}}",
+      value: Errors.Inspect.shrunken_representation(value)
+    }
   end
 
   def result_details(:error) do
@@ -109,7 +116,11 @@ defmodule Errors do
   end
 
   def result_details({:ok, value}) do
-    %{type: "ok", message: Errors.Inspect.inspect(value)}
+    %{
+      type: "ok",
+      message: "{:ok, #{Errors.Inspect.inspect(value)}}",
+      value: Errors.Inspect.shrunken_representation(value)
+    }
   end
 
   def result_details(:ok) do
@@ -129,48 +140,30 @@ defmodule Errors do
   end
 
   def log(result, mode) do
-    stacktrace_line =
-      Stacktrace.calling_stacktrace()
-      |> Stacktrace.most_relevant_entry()
-      |> Stacktrace.format_file_line()
+    validate_result!(result)
 
-    log_spec =
-      case result do
-        :error ->
-          %{message: message} = result_details(result)
+    stacktrace = Stacktrace.calling_stacktrace()
 
-          {:error, "#{message}"}
+    log_details = LogAdapter.LogDetails.new(result, stacktrace)
 
-        {:error, _} ->
-          %{message: message} = result_details(result)
+    adapter_mod = Application.get_env(:errors, :log_adapter, LogAdapter.Plain)
 
-          {:error, message}
-
-        :ok ->
-          if mode == :all do
-            {:info, ":ok"}
-          end
-
-        {:ok, value} ->
-          if mode == :all do
-            {:info, "{:ok, #{Errors.Inspect.inspect(value)}}"}
-          end
-
-        _ ->
-          # TODO: Should we always raise?
-          raise ArgumentError,
-                "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: #{inspect(result)}"
+    with {level, message} <- adapter_mod.call(log_details) do
+      if log_details.result_details.type == "error" || mode == :all do
+        Logger.log(level, message)
       end
-
-    with {level, message} <- log_spec do
-      parts_string =
-        [stacktrace_line, message]
-        |> Enum.reject(&is_nil/1)
-        |> Enum.join(" ")
-
-      Logger.log(level, "[RESULT] #{parts_string}")
     end
 
     result
+  end
+
+  def validate_result!(:ok), do: nil
+  def validate_result!(:error), do: nil
+  def validate_result!({:ok, _}), do: nil
+  def validate_result!({:error, _}), do: nil
+
+  def validate_result!(result) do
+    raise ArgumentError,
+          "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: #{inspect(result)}"
   end
 end
