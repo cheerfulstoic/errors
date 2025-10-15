@@ -16,4 +16,8 @@ defmodule Errors.TestHelper do
   def blah do
     123
   end
+
+  def raise_argument_error(_) do
+    raise ArgumentError, "amount too high"
+  end
 end

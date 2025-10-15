@@ -19,6 +19,11 @@ defmodule Errors.LogTest do
     Application.delete_env(:errors, :app)
     Application.delete_env(:errors, :log_adapter)
 
+    on_exit(fn ->
+      Application.delete_env(:errors, :app)
+      Application.delete_env(:errors, :log_adapter)
+    end)
+
     :ok
   end
 

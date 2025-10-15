@@ -38,7 +38,8 @@ defmodule Errors.WrappedError do
       when is_exception(exception) and is_function(func) do
     exception =
       %__MODULE__{
-        result: nil,
+        # If `result` isn't :ok/:error/{:ok, _}/{:error, _} then it was a raised exception
+        result: exception,
         reason: exception,
         context: func,
         stacktrace: stacktrace,
@@ -49,16 +50,23 @@ defmodule Errors.WrappedError do
   end
 
   def message(%__MODULE__{} = error) when is_binary(error.context) or is_nil(error.context) do
-    {errors, root_result} = unwrap(error)
+    errors = unwrap(error)
 
     context_string =
       errors
       |> Enum.map(fn error ->
         context_desc =
           cond do
-            is_function(error.context) -> "in function"
-            is_binary(error.context) -> error.context
-            is_nil(error.context) -> nil
+            is_function(error.context) ->
+              function_info = Function.info(error.context)
+
+              "#{inspect(function_info[:module])}.#{function_info[:name]}/1"
+
+            is_binary(error.context) ->
+              error.context
+
+            is_nil(error.context) ->
+              nil
           end
 
         parts_string =
@@ -70,17 +78,13 @@ defmodule Errors.WrappedError do
       end)
       |> Enum.join("\n")
 
-    message =
-      case root_result do
-        nil -> Exception.message(List.last(errors).reason)
-        other -> Errors.result_details(other).message
-      end
+    message = Errors.result_details(List.last(errors).result).message
 
     "#{message}\n#{context_string}"
   end
 
   def message(%__MODULE__{} = error) when is_function(error.context) do
-    {errors, root_result} = unwrap(error)
+    errors = unwrap(error)
 
     context_string =
       errors
@@ -96,23 +100,19 @@ defmodule Errors.WrappedError do
       end)
       |> Enum.join("\n")
 
-    message =
-      case root_result do
-        nil -> Exception.message(error.reason)
-        other -> Errors.result_details(other).message
-      end
+    message = Errors.result_details(List.last(errors).result).message
 
     "#{message}\n#{context_string}"
   end
 
   def unwrap(%__MODULE__{reason: %__MODULE__{} = nested_error} = error) do
-    {nested_errors, root_result} = unwrap(nested_error)
+    nested_errors = unwrap(nested_error)
 
-    {[error | nested_errors], root_result}
+    [error | nested_errors]
   end
 
   def unwrap(%__MODULE__{} = error) do
-    {[error], error.result}
+    [error]
   end
 
   defp format_line(error) do
@@ -147,10 +147,12 @@ end
 if Code.ensure_loaded?(JSON.Encoder) do
   defimpl JSON.Encoder, for: Errors.WrappedError do
     def encode(error, encoder) do
-      {errors, root_result} = Errors.WrappedError.unwrap(error)
+      errors = Errors.WrappedError.unwrap(error)
+
+      message = Errors.result_details(List.last(errors).result).message
 
       encoder.(%{
-        message: Errors.result_details(root_result).message,
+        message: message,
         contexts: Enum.map(errors, &%{label: &1.context, metadata: &1.metadata})
       })
     end
@@ -160,11 +162,13 @@ end
 # if Code.ensure_loaded?(Jason.Encoder) do
 defimpl Jason.Encoder, for: Errors.WrappedError do
   def encode(error, opts) do
-    {errors, root_result} = Errors.WrappedError.unwrap(error)
+    errors = Errors.WrappedError.unwrap(error)
+
+    message = Errors.result_details(List.last(errors).result).message
 
     Jason.Encode.map(
       %{
-        message: Errors.result_details(root_result).message,
+        message: message,
         contexts: Enum.map(errors, &%{label: &1.context, metadata: &1.metadata})
       },
       opts

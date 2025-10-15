@@ -199,6 +199,11 @@ defmodule Errors do
     %{type: "ok", message: Errors.Inspect.inspect(:ok)}
   end
 
+  # If `result` isn't :ok/:error/{:ok, _}/{:error, _} then it was a raised exception
+  def result_details(%mod{} = exception) when is_exception(exception) do
+    %{type: "raise", message: "** (#{inspect(mod)}) #{Exception.message(exception)}"}
+  end
+
   defp exception_message(%mod{} = exception) when is_exception(exception) do
     if function_exported?(mod, :message, 1) or Map.has_key?(struct(mod), :message) do
       Exception.message(exception)
@@ -214,12 +219,11 @@ defmodule Errors do
   def user_message(reason) when is_binary(reason), do: reason
 
   def user_message(%WrappedError{} = error) do
-    case WrappedError.unwrap(error) do
-      {errors, {:error, root_reason}} ->
-        context_string = Enum.map_join(errors, " => ", & &1.context)
+    errors = WrappedError.unwrap(error)
+    last_error = List.last(errors)
+    context_string = Enum.map_join(errors, " => ", & &1.context)
 
-        user_message(root_reason) <> " (happened while: #{context_string})"
-    end
+    user_message(last_error.reason) <> " (happened while: #{context_string})"
   end
 
   def user_message(exception) when is_exception(exception) do

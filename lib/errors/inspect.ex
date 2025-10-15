@@ -70,7 +70,8 @@ defmodule Errors.Inspect do
         } = exception,
         _sub_value?
       ) do
-    {errors, {:error, root_reason}} = Errors.WrappedError.unwrap(exception)
+    errors = Errors.WrappedError.unwrap(exception)
+    last_error = List.last(errors)
 
     contexts =
       Enum.map(errors, fn error ->
@@ -82,7 +83,7 @@ defmodule Errors.Inspect do
       end)
 
     %{
-      __root_reason__: shrunken_representation(root_reason),
+      __root_reason__: shrunken_representation(last_error.reason),
       __contexts__: contexts
     }
   end

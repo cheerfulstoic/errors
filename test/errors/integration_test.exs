@@ -1,5 +1,6 @@
 defmodule Errors.IntegrationTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
 
   describe "step!/1 with wrap_context" do
     test "wraps error with context" do
@@ -75,7 +76,13 @@ defmodule Errors.IntegrationTest do
       assert {:error, %Errors.WrappedError{} = second_wrapped_error} = wrapped_error.result
       assert second_wrapped_error.context == func
       assert second_wrapped_error.metadata == %{}
-      assert second_wrapped_error.result == nil
+
+      assert {Errors.IntegrationTest,
+              :"-test step/2 with wrap_context wraps caught exception with context/1-fun-0-", _,
+              [file: ~c"test/errors/integration_test.exs", line: _]} =
+               List.first(second_wrapped_error.stacktrace)
+
+      assert %ArgumentError{message: "invalid value"} = second_wrapped_error.result
       assert %ArgumentError{message: "invalid value"} = second_wrapped_error.reason
     end
 
@@ -107,6 +114,103 @@ defmodule Errors.IntegrationTest do
       assert second_wrapped_error.context == "first"
       assert second_wrapped_error.metadata == %{}
       assert second_wrapped_error.result == {:error, "invalid email: user@example.com"}
+    end
+  end
+
+  describe "log with wrapped errors" do
+    test "logs simple wrapped error with context" do
+      log =
+        capture_log([level: :error], fn ->
+          result =
+            Errors.step!(fn -> {:error, "database timeout"} end)
+            |> Errors.wrap_context("Fetching user data")
+            |> Errors.log(:errors)
+
+          assert {:error, %Errors.WrappedError{}} = result
+        end)
+
+      assert log =~
+               ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: {:error, "database timeout"}
+    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Fetching user data>
+    end
+
+    test "logs nested wrapped errors from step/2 exception" do
+      log =
+        capture_log([level: :error], fn ->
+          result =
+            {:ok, 100}
+            |> Errors.step(&Errors.TestHelper.raise_argument_error/1)
+            |> Errors.wrap_context("Processing payment")
+            |> Errors.log(:errors)
+
+          assert {:error, %Errors.WrappedError{}} = result
+        end)
+
+      assert log =~
+               ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: \*\* \(ArgumentError\) amount too high
+    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Processing payment
+    \[CONTEXT\] lib/errors/test_helper.ex:\d+: Errors\.TestHelper\.raise_argument_error/1>
+    end
+
+    test "logs deeply nested contexts" do
+      log =
+        capture_log([level: :error], fn ->
+          result =
+            {:ok, "test@example.com"}
+            |> Errors.step!(fn email -> {:error, "invalid domain for #{email}"} end)
+            |> Errors.wrap_context("Validating email")
+            |> Errors.wrap_context("User registration")
+            |> Errors.wrap_context("API endpoint: /users")
+            |> Errors.log(:errors)
+
+          assert {:error, %Errors.WrappedError{}} = result
+        end)
+
+      assert log =~
+               ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: {:error, "invalid domain for test@example.com"}
+    \[CONTEXT\] test/errors/integration_test\.exs:\d+: API endpoint: /users
+    \[CONTEXT\] test/errors/integration_test\.exs:\d+: User registration
+    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Validating email>
+    end
+
+    test "does not log successes with :errors mode" do
+      log =
+        capture_log([level: :error], fn ->
+          result = {:ok, "success"} |> Errors.log(:errors)
+          assert result == {:ok, "success"}
+        end)
+
+      assert log == ""
+    end
+
+    test "logs successes with :all mode" do
+      log =
+        capture_log([level: :info], fn ->
+          result = {:ok, 42} |> Errors.log(:all)
+          assert result == {:ok, 42}
+        end)
+
+      assert log =~ ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: {:ok, 42}>
+    end
+
+    test "logs step/2 chain with exception and wrap_context" do
+      log =
+        capture_log([level: :error], fn ->
+          result =
+            {:ok, 5}
+            |> Errors.step(fn x -> x * 2 end)
+            |> Errors.step(fn x -> x + 3 end)
+            |> Errors.step(fn _ -> raise RuntimeError, "unexpected failure" end)
+            |> Errors.wrap_context("Data processing pipeline")
+            |> Errors.log(:errors)
+
+          assert {:error, %Errors.WrappedError{}} = result
+        end)
+
+      assert log =~
+               ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: \*\* \(RuntimeError\) unexpected failure
+    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Data processing pipeline
+    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Errors\.IntegrationTest\.-test log with wrapped errors logs step/2 chain with exception and wrap_context/1-fun-0-/1>
     end
   end
 end
