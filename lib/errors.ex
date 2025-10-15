@@ -15,16 +15,12 @@ defmodule Errors do
     {:ok, result}
   end
 
-  def wrap_context(:error, metadata) do
-    stacktrace = Stacktrace.calling_stacktrace()
-
-    {:error, WrappedError.new(:error, nil, stacktrace, metadata)}
+  def wrap_context(result, context) when is_binary(context) do
+    wrap_context(result, context, %{})
   end
 
-  def wrap_context({:error, reason}, metadata) do
-    stacktrace = Stacktrace.calling_stacktrace()
-
-    {:error, WrappedError.new({:error, reason}, nil, stacktrace, metadata)}
+  def wrap_context(result, metadata) when is_map(metadata) or is_list(metadata) do
+    wrap_context(result, nil, metadata)
   end
 
   def wrap_context(result, context, meta \\ %{})
@@ -81,6 +77,46 @@ defmodule Errors do
 
   def step!({:error, _} = result, _func), do: result
   def step!(other, _), do: validate_result!(other)
+
+  def step(result, func) do
+    # {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+    # dbg(stacktrace)
+    # stacktrace = Stacktrace.calling_stacktrace()
+    # dbg(stacktrace)
+
+    # telemetry_step_span(func, input, context, fn ->
+    try do
+      step!(result, func)
+    rescue
+      exception ->
+        # dbg(__STACKTRACE__)
+
+        {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+        # catch
+        #   :throw, value ->
+        #     {:error, "Value was thrown: #{inspect(value)}"}
+    end
+
+    # |> case do
+    #   {:ok, new_state} ->
+    #     {:ok, new_state}
+    #
+    #   {:error, error_value} ->
+    #     if wrap_step_function_errors?() do
+    #       {:error, StepFunctionError.exception({func, error_value, nil, false})}
+    #     else
+    #       {:error, error_value}
+    #     end
+    #
+    #   other ->
+    #     {:error,
+    #      Error.exception(
+    #        {func, context,
+    #         "Value other than {:ok, _} or {:error, _} returned for step function: #{inspect(other)}"}
+    #      )}
+    # end
+    # end)
+  end
 
   # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
   #

@@ -102,7 +102,7 @@ defmodule Errors.StepTest do
         {:ok, 10}
         |> Errors.step!(fn x -> x + 5 end)
         |> Errors.step!(fn _ -> raise "The raised error" end)
-        |> Errors.step!(fn _ -> {:error, "oops"} end)
+        |> Errors.step!(fn _ -> raise "Should not be called" end)
       end
     end
 
@@ -113,6 +113,88 @@ defmodule Errors.StepTest do
         |> Errors.step!(fn nil -> 42 end)
 
       assert result == {:ok, 42}
+    end
+  end
+
+  describe "step/2" do
+    test "behaves like step!/2 for successful operations" do
+      result = {:ok, 10}
+      assert Errors.step(result, fn x -> x * 2 end) == {:ok, 20}
+    end
+
+    test "passes nil to function when given :ok" do
+      result = :ok
+      assert Errors.step(result, fn nil -> 42 end) == {:ok, 42}
+    end
+
+    test "returns :error without calling function" do
+      result = :error
+      assert Errors.step(result, fn _ -> raise "Should not be called" end) == :error
+    end
+
+    test "returns {:error, term} without calling function" do
+      result = {:error, "some error"}
+
+      assert Errors.step(result, fn _ -> raise "Should not be called" end) ==
+               {:error, "some error"}
+    end
+
+    test "catches exceptions and wraps them in WrappedError" do
+      result = {:ok, 10}
+
+      {:error, %Errors.WrappedError{} = wrapped_error} =
+        Errors.step(result, fn _ -> raise "boom" end)
+
+      assert wrapped_error.reason == %RuntimeError{message: "boom"}
+    end
+
+    test "chains multiple step calls" do
+      result =
+        {:ok, 10}
+        |> Errors.step(fn x -> x + 5 end)
+        |> Errors.step(fn x -> x * 2 end)
+        |> Errors.step(fn x -> x - 10 end)
+
+      assert result == {:ok, 20}
+    end
+
+    test "stops chain on error" do
+      result =
+        {:ok, 10}
+        |> Errors.step(fn x -> x + 5 end)
+        |> Errors.step(fn 15 -> {:error, "oops"} end)
+        |> Errors.step(fn _ -> raise "Should not be called" end)
+
+      assert result == {:error, "oops"}
+    end
+
+    test "catches exception and stops chain" do
+      result =
+        {:ok, 10}
+        |> Errors.step(fn x -> x + 5 end)
+        |> Errors.step(fn _ -> raise "boom" end)
+        |> Errors.step(fn _ -> raise "Should not be called" end)
+
+      assert {:error, %Errors.WrappedError{reason: %RuntimeError{message: "boom"}}} = result
+    end
+
+    test "catches ArgumentError" do
+      result = Errors.step({:ok, "test"}, fn _ -> raise ArgumentError, "invalid argument" end)
+
+      assert {:error, %Errors.WrappedError{reason: %ArgumentError{message: "invalid argument"}}} =
+               result
+    end
+
+    test "catches custom exceptions" do
+      defmodule CustomError do
+        defexception message: "custom error"
+      end
+
+      result = Errors.step({:ok, 5}, fn _ -> raise CustomError end)
+
+      assert {:error, %Errors.WrappedError{reason: reason}} = result
+      assert reason.__struct__ == CustomError
+      assert reason.message == "custom error"
     end
   end
 end

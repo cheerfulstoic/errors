@@ -34,14 +34,35 @@ defmodule Errors.WrappedError do
     %{exception | message: message(exception)}
   end
 
+  def new_raised(exception, func, stacktrace)
+      when is_exception(exception) and is_function(func) do
+    exception =
+      %__MODULE__{
+        result: nil,
+        reason: exception,
+        context: func,
+        stacktrace: stacktrace,
+        metadata: %{}
+      }
+
+    %{exception | message: message(exception)}
+  end
+
   def message(%__MODULE__{} = error) when is_binary(error.context) or is_nil(error.context) do
     {errors, root_result} = unwrap(error)
 
     context_string =
       errors
       |> Enum.map(fn error ->
+        context_desc =
+          cond do
+            is_function(error.context) -> "in function"
+            is_binary(error.context) -> error.context
+            is_nil(error.context) -> nil
+          end
+
         parts_string =
-          [format_line(error), error.context, format_metadata(error)]
+          [format_line(error), context_desc, format_metadata(error)]
           |> Enum.reject(&is_nil/1)
           |> Enum.join(" ")
 
@@ -49,7 +70,37 @@ defmodule Errors.WrappedError do
       end)
       |> Enum.join("\n")
 
-    message = Errors.result_details(root_result).message
+    message =
+      case root_result do
+        nil -> Exception.message(List.last(errors).reason)
+        other -> Errors.result_details(other).message
+      end
+
+    "#{message}\n#{context_string}"
+  end
+
+  def message(%__MODULE__{} = error) when is_function(error.context) do
+    {errors, root_result} = unwrap(error)
+
+    context_string =
+      errors
+      |> Enum.map(fn error ->
+        context_desc = if is_function(error.context), do: "in function", else: error.context
+
+        parts_string =
+          [format_line(error), context_desc, format_metadata(error)]
+          |> Enum.reject(&is_nil/1)
+          |> Enum.join(" ")
+
+        "    [CONTEXT] #{parts_string}"
+      end)
+      |> Enum.join("\n")
+
+    message =
+      case root_result do
+        nil -> Exception.message(error.reason)
+        other -> Errors.result_details(other).message
+      end
 
     "#{message}\n#{context_string}"
   end
