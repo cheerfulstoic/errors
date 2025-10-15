@@ -5,6 +5,7 @@ defmodule Errors do
 
   alias Errors.Stacktrace
   alias Errors.LogAdapter
+  alias Errors.WrappedError
   require Logger
   require Stacktrace
 
@@ -17,13 +18,13 @@ defmodule Errors do
   def wrap_context(:error, metadata) do
     stacktrace = Stacktrace.calling_stacktrace()
 
-    {:error, Errors.WrappedError.new(:error, nil, stacktrace, metadata)}
+    {:error, WrappedError.new(:error, nil, stacktrace, metadata)}
   end
 
   def wrap_context({:error, reason}, metadata) do
     stacktrace = Stacktrace.calling_stacktrace()
 
-    {:error, Errors.WrappedError.new({:error, reason}, nil, stacktrace, metadata)}
+    {:error, WrappedError.new({:error, reason}, nil, stacktrace, metadata)}
   end
 
   def wrap_context(result, context, meta \\ %{})
@@ -37,13 +38,13 @@ defmodule Errors do
   def wrap_context(:error, context, metadata) do
     stacktrace = Stacktrace.calling_stacktrace()
 
-    {:error, Errors.WrappedError.new(:error, context, stacktrace, metadata)}
+    {:error, WrappedError.new(:error, context, stacktrace, metadata)}
   end
 
   def wrap_context({:error, reason}, context, metadata) do
     stacktrace = Stacktrace.calling_stacktrace()
 
-    {:error, Errors.WrappedError.new({:error, reason}, context, stacktrace, metadata)}
+    {:error, WrappedError.new({:error, reason}, context, stacktrace, metadata)}
   end
 
   # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
@@ -82,7 +83,7 @@ defmodule Errors do
   #    * %MyApp.Accounts.User{id: 123, ...}
   #    * #Ecto.Changeset<action: ..., changes: ..., ...>
 
-  def result_details({:error, %Errors.WrappedError{} = exception}) do
+  def result_details({:error, %WrappedError{} = exception}) do
     %{
       type: "error",
       message: Exception.message(exception),
@@ -139,6 +140,37 @@ defmodule Errors do
     end
   end
 
+  def user_message(reason) when is_binary(reason), do: reason
+
+  def user_message(%WrappedError{} = error) do
+    case WrappedError.unwrap(error) do
+      {errors, {:error, root_reason}} ->
+        context_string = Enum.map_join(errors, " => ", & &1.context)
+
+        user_message(root_reason) <> " (happened while: #{context_string})"
+    end
+  end
+
+  def user_message(exception) when is_exception(exception) do
+    error_code = Errors.String.generate(8)
+
+    Logger.error(
+      "#{error_code}: Could not generate user error message. Error was: #{Errors.Inspect.inspect(exception)} (message: #{exception_message(exception)})"
+    )
+
+    "There was an error. Refer to code: #{error_code}"
+  end
+
+  def user_message(reason) do
+    error_code = Errors.String.generate(8)
+
+    Logger.error(
+      "#{error_code}: Could not generate user error message. Error was: #{Errors.Inspect.inspect(reason)}"
+    )
+
+    "There was an error. Refer to code: #{error_code}"
+  end
+
   def log(result, mode) do
     validate_result!(result)
 
@@ -157,12 +189,12 @@ defmodule Errors do
     result
   end
 
-  def validate_result!(:ok), do: nil
-  def validate_result!(:error), do: nil
-  def validate_result!({:ok, _}), do: nil
-  def validate_result!({:error, _}), do: nil
+  defp validate_result!(:ok), do: nil
+  defp validate_result!(:error), do: nil
+  defp validate_result!({:ok, _}), do: nil
+  defp validate_result!({:error, _}), do: nil
 
-  def validate_result!(result) do
+  defp validate_result!(result) do
     raise ArgumentError,
           "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: #{inspect(result)}"
   end
