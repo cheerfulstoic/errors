@@ -57,6 +57,31 @@ defmodule Errors do
     end
   end
 
+  def step!(:ok, func) do
+    case func.(nil) do
+      :ok -> :ok
+      {:ok, _} = result -> result
+      :error -> :error
+      {:error, _} = result -> result
+      other -> {:ok, other}
+    end
+  end
+
+  def step!({:ok, value}, func) do
+    case func.(value) do
+      :ok -> :ok
+      {:ok, _} = result -> result
+      :error -> :error
+      {:error, _} = result -> result
+      other -> {:ok, other}
+    end
+  end
+
+  def step!(:error, _func), do: :error
+
+  def step!({:error, _} = result, _func), do: result
+  def step!(other, _), do: validate_result!(other)
+
   # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
   #
   # def telemetry(:ok, name), do: telemetry({:ok, nil}, name)
