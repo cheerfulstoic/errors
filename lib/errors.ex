@@ -47,6 +47,16 @@ defmodule Errors do
     {:error, WrappedError.new({:error, reason}, context, stacktrace, metadata)}
   end
 
+  def step!(func) do
+    case func.() do
+      :ok -> :ok
+      {:ok, _} = result -> result
+      :error -> :error
+      {:error, _} = result -> result
+      other -> {:ok, other}
+    end
+  end
+
   # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
   #
   # def telemetry(:ok, name), do: telemetry({:ok, nil}, name)
