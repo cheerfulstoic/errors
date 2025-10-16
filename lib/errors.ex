@@ -9,6 +9,32 @@ defmodule Errors do
   require Logger
   require Stacktrace
 
+  @doc """
+  Wraps error results with additional context information, leaving successful results unchanged.
+
+  Takes a result tuple and wraps error cases (`:error` or `{:error, reason}`) with
+  context information and metadata, returning `{:error, %Errors.WrappedError{}}`. Success
+  cases (`:ok` or `{:ok, value}`) are passed through unchanged.
+
+  ## Parameters
+
+    * `result` - The result to potentially wrap (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`)
+    * `context` - Either a string describing the context or a map/keyword list of metadata
+
+  ## Examples
+
+      iex> Errors.wrap_context({:ok, 42}, "fetching user")
+      {:ok, 42}
+
+      iex> Errors.wrap_context(:error, "fetching user")
+      {:error, %Errors.WrappedError{}}
+
+      iex> Errors.wrap_context({:error, :not_found}, "fetching user", %{user_id: 123})
+      {:error, %Errors.WrappedError{}}
+
+      iex> Errors.wrap_context({:error, :not_found}, %{user_id: 123})
+      {:error, %Errors.WrappedError{}}
+  """
   def wrap_context(:ok, _meta), do: :ok
 
   def wrap_context({:ok, result}, _meta) do
@@ -43,6 +69,28 @@ defmodule Errors do
     {:error, WrappedError.new({:error, reason}, context, stacktrace, metadata)}
   end
 
+  @doc """
+  Executes a function that returns a result tuple, without exception handling.
+
+  Calls the provided zero-arity function and chehcks that it returns a result
+  (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`). If the function returns
+  any other value, it wraps it in `{:ok, value}`.
+
+  This is the "unsafe" version that doesn't catch exceptions. Use `step/1` for
+  exception handling.
+
+  ## Parameters
+
+    * `func` - A zero-arity function that returns a result
+
+  ## Examples
+
+      iex> step!(fn -> {:ok, 42} end)
+      {:ok, 42}
+
+      iex> step!(fn -> {:error, :not_found} end)
+      {:error, :not_found}
+  """
   def step!(func) do
     case func.() do
       :ok -> :ok
@@ -53,6 +101,29 @@ defmodule Errors do
     end
   end
 
+  @doc """
+  Executes a function with a previous result value, without exception handling.
+
+  Takes a result from a previous step and, if successful, passes the unwrapped value
+  to the provided function. If the previous result was an error, short-circuits and
+  returns the error without calling the function.
+
+  This is the "unsafe" version that doesn't catch exceptions. Use `step/2` for
+  exception handling.
+
+  ## Parameters
+
+    * `result` - The previous result (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`)
+    * `func` - A function that takes the unwrapped value and returns a result
+
+  ## Examples
+
+      iex> step!({:ok, 5}, fn x -> {:ok, x * 2} end)
+      {:ok, 10}
+
+      iex> step!({:error, :not_found}, fn x -> {:ok, x * 2} end)
+      {:error, :not_found}
+  """
   def step!(:ok, func) do
     case func.(nil) do
       :ok -> :ok
@@ -78,6 +149,55 @@ defmodule Errors do
   def step!({:error, _} = result, _func), do: result
   def step!(other, _), do: validate_result!(other)
 
+  @doc """
+  Executes a function that returns a result tuple, with exception handling.
+
+  Calls the provided zero-arity function and ensures it returns a valid result.
+  If the function raises an exception, it catches it and returns
+  `{:error, %Errors.WrappedError{}}` with details about the exception.
+
+  ## Parameters
+
+    * `func` - A zero-arity function that returns a result
+
+  ## Examples
+
+      iex> step(fn -> {:ok, 42} end)
+      {:ok, 42}
+
+      iex> step(fn -> raise "boom" end)
+      {:error, %Errors.WrappedError{}}
+  """
+  def step(func) do
+    try do
+      step!(func)
+    rescue
+      exception ->
+        {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+    end
+  end
+
+  @doc """
+  Executes a function with a previous result value, with exception handling.
+
+  Takes a result from a previous step and, if successful, passes the unwrapped value
+  to the provided function. If the previous result was an error, short-circuits and
+  returns the error. If the function raises an exception, it catches it and returns
+  `{:error, %Errors.WrappedError{}}` with details about the exception.
+
+  ## Parameters
+
+    * `result` - The previous result (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`)
+    * `func` - A function that takes the unwrapped value and returns a result
+
+  ## Examples
+
+      iex> step({:ok, 5}, fn x -> {:ok, x * 2} end)
+      {:ok, 10}
+
+      iex> step({:ok, 5}, fn _x -> raise "boom" end)
+      {:error, %Errors.WrappedError{}}
+  """
   def step(result, func) do
     # {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
     # dbg(stacktrace)
@@ -216,6 +336,32 @@ defmodule Errors do
     end
   end
 
+  @doc """
+  Generates a user-friendly error message from various error types.
+
+  Converts errors into human-readable messages suitable for displaying to end users.
+  For wrapped errors, it unwraps the error chain and includes context information in the message.
+  For exceptions and unknown error types, it generates a unique error code and logs
+  the full error details for debugging.
+
+  ## Parameters
+
+    * `reason` - The error to convert (string, exception, `%Errors.WrappedError{}`, or any value)
+
+  ## Examples
+
+      iex> user_message("Invalid email")
+      "Invalid email"
+
+      iex> user_message(%Errors.WrappedError{})
+      "not found (happened while: fetching user => validating email)"
+
+      iex> user_message(%RuntimeError{message: "boom"})
+      "There was an error. Refer to code: ABC12345"
+
+      Log generated:
+      ABC12345: Could not generate user error message. Error was: #RuntimeError<...> (message: boom)
+  """
   def user_message(reason) when is_binary(reason), do: reason
 
   def user_message(%WrappedError{} = error) do
@@ -246,6 +392,17 @@ defmodule Errors do
     "There was an error. Refer to code: #{error_code}"
   end
 
+  @doc """
+  Logs a result tuple and returns it unchanged.
+
+  Takes a result and logs it using the configured log adapter. By default, only
+  errors are logged. Use `mode: :all` to log both successes and errors.
+
+  ## Parameters
+
+    * `result` - The result to log (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`)
+    * `mode` - Either `:errors` (default, logs only errors) or `:all` (logs all results)
+  """
   def log(result, mode \\ :errors) do
     validate_result!(result)
 
