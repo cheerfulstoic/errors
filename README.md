@@ -90,32 +90,51 @@ In the case above, instead of calling `|> log(:errors)`  we could call `|> log(:
 # [info] [RESULT] lib/api/user_controller.ex:4: {:ok, %MyApp.Users.User{...}}
 ```
 
-#### Configuring your app name
+### Contexts
 
-Because of the way stacktraces work in Elixir, logging a result may not give the right line.  An example is when you give an anonymous function to a library:
+When errors occur deep in your application's call stack, it can be challenging to understand where your errors are coming from. The `wrap_context/3` function allows you to add contextual information at multiple levels, building up a trail of breadcrumbs as errors bubble up.
 
-```elixir
-defmodule MyAppWeb.UserController do
-  def create(conn, params) do
-    SomeLibrary.execute(fn ->
-      MyApp.Users.create_user(params)
-      |> Errors.log(:errors)
-    end)
-    # ...
-
-# The line in the log might look something like:
-# [error] [RESULT] lib/some_library.ex:4: {:error, #Ecto.Changeset<...>}
-
-# Where you would like it to show:
-# [error] [RESULT] lib/my_app_web/user_controller.ex:5: {:error, #Ecto.Changeset<...>}
-```
-
-In order to help log the correct entries from the stacktrace, you can optionally configure our app's name to help it be found:
+Here's an example showing how contexts accumulate across different modules:
 
 ```elixir
-# config/config.exs
-config :errors, :app, :your_app_name
+defmodule MyApp.OrderProcessor do
+  def process_payment(order) do
+    with {:ok, payment_method} <- fetch_payment_method(order),
+         {:ok, charge} <- charge_payment(payment_method, order.amount) do
+      {:ok, charge}
+    end
+    |> Errors.wrap_context("process payment", %{order_id: order.id, order_amount: order.amount})
+  end
+  # ...
+end
+
+defmodule MyApp.OrderService do
+  def complete_order(order_id) do
+    fetch_order(order_id)
+    |> MyApp.OrderProcessor.process_payment(order)
+    |> Errors.wrap_context("complete order")
+  end
+  # ...
+end
 ```
+
+When an error occurs in the payment processing, logging it will show the full context chain:
+
+```elixir
+def show(conn, %{"order_id" => order_id}) do
+  order_id = String.to_integer(order_id)
+
+  MyApp.complete_order.complete_order(order_id)
+  |> Errors.log(:errors)
+  # ...
+
+# Log output:
+# [error] [RESULT] lib/my_app/order_service.ex:15: {:error, :payment_declined}
+#     [CONTEXT] lib/my_app/order_service.ex:15: complete order
+#     [CONTEXT] lib/my_app/order_processor.ex:8: process payment | %{order_id: 12345, amount: 99.99}
+```
+
+This makes it easy to trace exactly what your application was doing when the error occurred, including both descriptive labels and relevant data.
 
 ### User-friendly output
 
@@ -187,6 +206,35 @@ Returns the original result unchanged.
 ### `Errors.user_message/1`
 
 - `reason` - Any `term()` value
+
+## Configuration
+
+#### `app`
+
+Because of how tail-call optimisation affects stack-traces in Elixir, logging a result may not give the right line.  An example is when you give an anonymous function to a library:
+
+```elixir
+defmodule MyAppWeb.UserController do
+  def create(conn, params) do
+    SomeLibrary.execute(fn ->
+      MyApp.Users.create_user(params)
+      |> Errors.log(:errors)
+    end)
+    # ...
+
+# The line in the log might look something like:
+# [error] [RESULT] lib/some_library.ex:4: {:error, #Ecto.Changeset<...>}
+
+# Where you would like it to show:
+# [error] [RESULT] lib/my_app_web/user_controller.ex:5: {:error, #Ecto.Changeset<...>}
+```
+
+In order to help log the correct entries from the stacktrace, you can optionally configure our app's name to help it be found:
+
+```elixir
+# config/config.exs
+config :errors, :app, :your_app_name
+```
 
 ## Development
 
