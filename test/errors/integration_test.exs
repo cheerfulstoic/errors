@@ -2,6 +2,18 @@ defmodule Errors.IntegrationTest do
   use ExUnit.Case
   import ExUnit.CaptureLog
 
+  setup do
+    Application.delete_env(:errors, :app)
+    Application.delete_env(:errors, :log_adapter)
+
+    on_exit(fn ->
+      Application.delete_env(:errors, :app)
+      Application.delete_env(:errors, :log_adapter)
+    end)
+
+    :ok
+  end
+
   describe "step!/1 with wrap_context" do
     test "wraps error with context" do
       result =
@@ -212,5 +224,50 @@ defmodule Errors.IntegrationTest do
     \[CONTEXT\] test/errors/integration_test\.exs:\d+: Data processing pipeline
     \[CONTEXT\] test/errors/integration_test\.exs:\d+: Errors\.IntegrationTest\.-test log with wrapped errors logs step/2 chain with exception and wrap_context/1-fun-0-/1>
     end
+  end
+
+  test "" do
+    log =
+      capture_log([level: :error], fn ->
+        {:ok, "123u"}
+        # Raises if not a valid integer
+        |> Errors.step(&String.to_integer/1)
+        |> Errors.log(:errors)
+      end)
+
+    assert log =~
+             ~r<\[RESULT\] lib/ex_unit/capture_log\.ex:\d+: \*\* \(ArgumentError\) errors were found at the given arguments:
+
+  \* 1st argument: not a textual representation of an integer
+
+    \[CONTEXT\] :erlang\.binary_to_integer/1>
+
+    Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
+
+    log =
+      capture_log([level: :error], fn ->
+        {:ok, "123u"}
+        # Raises if not a valid integer
+        |> Errors.step(&String.to_integer/1)
+        |> Errors.log(:errors)
+      end)
+
+    [_, json] = Regex.run(~r/\[error\] (.*)/, log)
+
+    data = Jason.decode!(json)
+
+    assert data["source"] == "Errors"
+    assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
+
+    assert data["result_details"]["type"] == "error"
+
+    assert data["result_details"]["message"] ==
+             "** (ArgumentError) errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n\n    [CONTEXT] :erlang.binary_to_integer/1"
+
+    assert %{
+             "__struct__" => "ArgumentError",
+             "__message__" =>
+               "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"
+           } = data["result_details"]["value"]["__root_reason__"]
   end
 end

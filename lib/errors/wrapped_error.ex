@@ -89,7 +89,14 @@ defmodule Errors.WrappedError do
     context_string =
       errors
       |> Enum.map(fn error ->
-        context_desc = if is_function(error.context), do: "in function", else: error.context
+        context_desc =
+          if is_function(error.context) do
+            function_info = Function.info(error.context)
+
+            "#{inspect(function_info[:module])}.#{function_info[:name]}/1"
+          else
+            error.context
+          end
 
         parts_string =
           [format_line(error), context_desc, format_metadata(error)]

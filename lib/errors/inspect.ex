@@ -76,7 +76,7 @@ defmodule Errors.Inspect do
     contexts =
       Enum.map(errors, fn error ->
         %{
-          label: error.context,
+          label: shrunken_representation(error.context),
           stacktrace: format_stacktrace(error.stacktrace),
           metadata: shrunken_representation(error.metadata)
         }
@@ -117,7 +117,8 @@ defmodule Errors.Inspect do
   def shrunken_representation(map, sub_value?) when is_map(map) do
     map
     |> Enum.map(fn
-      {key, value} when is_map(value) or is_list(value) or is_tuple(value) ->
+      {key, value}
+      when is_map(value) or is_list(value) or is_tuple(value) or is_function(value) ->
         {key, shrunken_representation(value, true)}
 
       {key, value} ->
@@ -164,6 +165,12 @@ defmodule Errors.Inspect do
 
   # Not 100% sure about this approach, but trying it for now 🤷‍♂️
   def shrunken_representation(tuple, _sub_value?) when is_tuple(tuple), do: Kernel.inspect(tuple)
+
+  def shrunken_representation(func, _sub_value?) when is_function(func) do
+    function_info = Function.info(func)
+
+    "#{Kernel.inspect(function_info[:module])}.#{function_info[:name]}/#{function_info[:arity]}"
+  end
 
   def shrunken_representation(value, _sub_value?), do: value
 
