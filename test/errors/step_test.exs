@@ -116,6 +116,40 @@ defmodule Errors.StepTest do
     end
   end
 
+  describe "step/1" do
+    test "Returns term as success" do
+      start = 123
+      assert Errors.step(fn -> start * 2 end) == {:ok, 246}
+    end
+
+    test "Returns :ok as :ok" do
+      assert Errors.step(fn -> :ok end) == :ok
+    end
+
+    test "Returns success with value as success" do
+      start = 123
+      assert Errors.step(fn -> {:ok, start * 2} end) == {:ok, 246}
+    end
+
+    test "Returns :error as :error" do
+      assert Errors.step(fn -> :error end) == :error
+    end
+
+    test "Returns error with value as error" do
+      assert Errors.step(fn -> {:error, "Test error"} end) == {:error, "Test error"}
+    end
+
+    test "An exception is raised" do
+      {:error, %Errors.WrappedError{} = wrapped_error} =
+        Errors.step(fn -> raise "boom" end)
+
+      assert wrapped_error.message =~
+               ~r<\*\* \(RuntimeError\) boom\n    \[CONTEXT\] test/errors/step_test\.exs:\d+: Errors\.StepTest\.-test step/1 An exception is raised/1-fun-0-/1>
+
+      assert wrapped_error.reason == %RuntimeError{message: "boom"}
+    end
+  end
+
   describe "step/2" do
     test "behaves like step!/2 for successful operations" do
       result = {:ok, 10}
