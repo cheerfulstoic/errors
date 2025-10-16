@@ -292,7 +292,7 @@ JSON format (spacing inserted for readability here):
       "__root_reason__": {
         "__struct__": "Ecto.Changeset",
         "params": {
-          "email": 123,
+          "email": 123
         },
         "errors": {
           "email": "{\"is invalid\", [type: :string, validation: :cast]}"
