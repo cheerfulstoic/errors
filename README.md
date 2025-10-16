@@ -125,7 +125,7 @@ When an error occurs in the payment processing, logging it will show the full co
 def show(conn, %{"order_id" => order_id}) do
   order_id = String.to_integer(order_id)
 
-  MyApp.complete_order.complete_order(order_id)
+  MyApp.complete_order(order_id)
   |> Errors.log(:errors)
   # ...
 
