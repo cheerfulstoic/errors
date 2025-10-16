@@ -207,7 +207,7 @@ Errors.step!(fn -> fetch_order_from_api(order_id) end)
 
 #### `step/2` - Chaining operations + handling exceptions
 
-Behaves like `step!/2` but catches exceptions and wraps them in a `WrappedError` with a context:
+Behaves like `step!/2` but catches exceptions and wraps them in a `WrappedError`:
 
 ```elixir
 # Example: Processing an API response
@@ -218,9 +218,20 @@ Behaves like `step!/2` but catches exceptions and wraps them in a `WrappedError`
 # => {:ok, transformed_data}
 
 # Catches exceptions during parsing
-|> Errors.step!(fn -> String.to_integer(value) end)  # Raises if not a valid integer
-|> Errors.step!(&update_config/1)  # Never called if parsing raises
-# => {:error, %Errors.WrappedError{reason: %ArgumentError{...}}}
+{:ok, config_string}
+|> Errors.step(&String.to_integer/1)  # Raises if not a valid integer
+|> Errors.step(&update_config/1)      # Never called if parsing raises
+|> Errors.log(:errors)
+```
+
+Log output when String.to_integer/1 raises:
+
+```
+[error] [RESULT] lib/my_app/config.ex:42: ** (ArgumentError) errors were found at the given arguments:
+
+ * 1st argument: not a textual representation of an integer
+
+    [CONTEXT] :erlang.binary_to_integer/1
 ```
 
 **When to use which:**
