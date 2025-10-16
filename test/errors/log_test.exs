@@ -15,6 +15,14 @@ defmodule Errors.LogTest do
     defexception [:message]
   end
 
+  defmodule User do
+    use Ecto.Schema
+
+    embedded_schema do
+      field(:name, :string)
+    end
+  end
+
   setup do
     Application.delete_env(:errors, :app)
     Application.delete_env(:errors, :log_adapter)
@@ -210,13 +218,23 @@ defmodule Errors.LogTest do
     test "logs Ecto.Changeset error" do
       log =
         capture_log([level: :info], fn ->
-          result = {:error, %Ecto.Changeset{}} |> Errors.log(:all)
-          assert result == {:error, %Ecto.Changeset{}}
+          result =
+            %User{}
+            |> Ecto.Changeset.cast(%{name: 1}, [:name])
+            |> Ecto.Changeset.apply_action(:insert)
+            |> Errors.log(:all)
+
+          assert {:error,
+                  %Ecto.Changeset{
+                    valid?: false,
+                    data: %Errors.LogTest.User{},
+                    errors: [name: {"is invalid", [type: :string, validation: :cast]}]
+                  }} = result
         end)
 
       # Uses Ecto's `inspect` implementation
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, #Ecto\.Changeset\<action: nil, changes: %{}, errors: \[\], data: nil, valid\?: false, \.\.\.\>}>
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, #Ecto\.Changeset\<action: :insert, changes: %{}, errors: \[name: {"is invalid", \[type: :string, validation: :cast\]}\], data: #Errors\.LogTest\.User\<\>, valid\?: false, \.\.\.\>}>
     end
 
     test "logs custom struct" do
@@ -511,7 +529,10 @@ defmodule Errors.LogTest do
 
       log =
         capture_log([level: :info], fn ->
-          {:error, %Ecto.Changeset{}} |> Errors.log(:all)
+          %User{}
+          |> Ecto.Changeset.cast(%{name: 1}, [:name])
+          |> Ecto.Changeset.apply_action(:insert)
+          |> Errors.log(:all)
         end)
 
       [_, json] = Regex.run(~r/\[error\] (.*)/, log)
@@ -524,16 +545,20 @@ defmodule Errors.LogTest do
       assert data["result_details"]["type"] == "error"
 
       assert data["result_details"]["message"] ==
-               "{:error, #Ecto.Changeset<action: nil, changes: %{}, errors: [], data: nil, valid?: false, ...>}"
+               "{:error, #Ecto.Changeset<action: :insert, changes: %{}, errors: [name: {\"is invalid\", [type: :string, validation: :cast]}], data: #Errors.LogTest.User<>, valid?: false, ...>}"
 
       assert data["result_details"]["value"] == %{
                "__struct__" => "Ecto.Changeset",
                "constraints" => [],
-               "errors" => [],
+               "errors" => %{
+                 "name" => "{\"is invalid\", [type: :string, validation: :cast]}"
+               },
                "prepare" => [],
                "repo_opts" => [],
                "required" => [],
-               "validations" => []
+               "validations" => [],
+               "params" => %{"name" => 1},
+               "types" => %{"id" => "binary_id", "name" => "string"}
              }
     end
 

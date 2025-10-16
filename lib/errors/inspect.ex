@@ -117,7 +117,7 @@ defmodule Errors.Inspect do
   def shrunken_representation(map, sub_value?) when is_map(map) do
     map
     |> Enum.map(fn
-      {key, value} when is_map(value) or is_list(value) ->
+      {key, value} when is_map(value) or is_list(value) or is_tuple(value) ->
         {key, shrunken_representation(value, true)}
 
       {key, value} ->
@@ -161,6 +161,9 @@ defmodule Errors.Inspect do
       end
     end
   end
+
+  # Not 100% sure about this approach, but trying it for now 🤷‍♂️
+  def shrunken_representation(tuple, _sub_value?) when is_tuple(tuple), do: Kernel.inspect(tuple)
 
   def shrunken_representation(value, _sub_value?), do: value
 
