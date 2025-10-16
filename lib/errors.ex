@@ -249,6 +249,10 @@ defmodule Errors do
   def log(result, mode \\ :errors) do
     validate_result!(result)
 
+    if mode not in [:errors, :all] do
+      raise ArgumentError, "mode must be either :errors or :all (got: #{inspect(mode)})"
+    end
+
     stacktrace = Stacktrace.calling_stacktrace()
 
     log_details = LogAdapter.LogDetails.new(result, stacktrace)

@@ -35,6 +35,16 @@ defmodule Errors.LogTest do
     :ok
   end
 
+  describe "validation" do
+    test "mode must be :errors or :all" do
+      assert_raise ArgumentError,
+                   "mode must be either :errors or :all (got: :something_else)",
+                   fn ->
+                     Errors.log(:ok, :something_else)
+                   end
+    end
+  end
+
   describe ".log with :error mode" do
     test "argument can only be a result" do
       assert_raise ArgumentError,
