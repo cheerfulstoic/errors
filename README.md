@@ -64,7 +64,7 @@ The `log/2` function logs results and passes them through unchanged, making it p
 defmodule API.UserController do
   def create(conn, params) do
     Users.create_user(params)
-    |> Errors.log(:errors)  # Only logs if there's an error
+    |> Errors.log()  # Only logs if there's an error
     |> case do
       {:ok, user} ->
         conn
@@ -126,7 +126,7 @@ def show(conn, %{"order_id" => order_id}) do
   order_id = String.to_integer(order_id)
 
   MyApp.complete_order(order_id)
-  |> Errors.log(:errors)
+  |> Errors.log()
   # ...
 
 # Log output:
@@ -222,7 +222,7 @@ Behaves like `step!/2` but catches exceptions and wraps them in a `WrappedError`
 {:ok, config_string}
 |> Errors.step(&String.to_integer/1)  # Raises if not a valid integer
 |> Errors.step(&update_config/1)      # Never called if parsing raises
-|> Errors.log(:errors)
+|> Errors.log()
 ```
 
 Log output when String.to_integer/1 raises:
@@ -266,7 +266,7 @@ log(result, mode)
 Logs results and passes them through unchanged.
 
 - `result` - `:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`
-- `mode` - `:errors` (only log errors) or `:all` (log all results)
+- `mode` - `:errors` (only log errors, the default if nothing is given) or `:all` (log all results)
 
 Returns the original result unchanged.
 
@@ -285,7 +285,7 @@ defmodule MyAppWeb.UserController do
   def create(conn, params) do
     SomeLibrary.execute(fn ->
       MyApp.Users.create_user(params)
-      |> Errors.log(:errors)
+      |> Errors.log()
     end)
   end
 end
@@ -329,7 +329,7 @@ end
 
 # Usage:
 MyApp.Users.update_email(123, "new@example.com")
-|> Errors.log(:errors)
+|> Errors.log()
 ```
 
 Plain text format (default):

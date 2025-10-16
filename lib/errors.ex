@@ -246,7 +246,7 @@ defmodule Errors do
     "There was an error. Refer to code: #{error_code}"
   end
 
-  def log(result, mode) do
+  def log(result, mode \\ :errors) do
     validate_result!(result)
 
     stacktrace = Stacktrace.calling_stacktrace()

@@ -136,7 +136,7 @@ defmodule Errors.IntegrationTest do
           result =
             Errors.step!(fn -> {:error, "database timeout"} end)
             |> Errors.wrap_context("Fetching user data")
-            |> Errors.log(:errors)
+            |> Errors.log()
 
           assert {:error, %Errors.WrappedError{}} = result
         end)
@@ -153,7 +153,7 @@ defmodule Errors.IntegrationTest do
             {:ok, 100}
             |> Errors.step(&Errors.TestHelper.raise_argument_error/1)
             |> Errors.wrap_context("Processing payment")
-            |> Errors.log(:errors)
+            |> Errors.log()
 
           assert {:error, %Errors.WrappedError{}} = result
         end)
@@ -173,7 +173,7 @@ defmodule Errors.IntegrationTest do
             |> Errors.wrap_context("Validating email")
             |> Errors.wrap_context("User registration")
             |> Errors.wrap_context("API endpoint: /users")
-            |> Errors.log(:errors)
+            |> Errors.log()
 
           assert {:error, %Errors.WrappedError{}} = result
         end)
@@ -188,7 +188,7 @@ defmodule Errors.IntegrationTest do
     test "does not log successes with :errors mode" do
       log =
         capture_log([level: :error], fn ->
-          result = {:ok, "success"} |> Errors.log(:errors)
+          result = {:ok, "success"} |> Errors.log()
           assert result == {:ok, "success"}
         end)
 
@@ -214,7 +214,7 @@ defmodule Errors.IntegrationTest do
             |> Errors.step(fn x -> x + 3 end)
             |> Errors.step(fn _ -> raise RuntimeError, "unexpected failure" end)
             |> Errors.wrap_context("Data processing pipeline")
-            |> Errors.log(:errors)
+            |> Errors.log()
 
           assert {:error, %Errors.WrappedError{}} = result
         end)
@@ -232,7 +232,7 @@ defmodule Errors.IntegrationTest do
         {:ok, "123u"}
         # Raises if not a valid integer
         |> Errors.step(&String.to_integer/1)
-        |> Errors.log(:errors)
+        |> Errors.log()
       end)
 
     assert log =~
@@ -249,7 +249,7 @@ defmodule Errors.IntegrationTest do
         {:ok, "123u"}
         # Raises if not a valid integer
         |> Errors.step(&String.to_integer/1)
-        |> Errors.log(:errors)
+        |> Errors.log()
       end)
 
     [_, json] = Regex.run(~r/\[error\] (.*)/, log)

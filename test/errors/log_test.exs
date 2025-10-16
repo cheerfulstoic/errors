@@ -40,14 +40,14 @@ defmodule Errors.LogTest do
       assert_raise ArgumentError,
                    "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: 123",
                    fn ->
-                     123 |> Errors.log(:errors)
+                     123 |> Errors.log()
                    end
     end
 
     test "logs and passes through :error atom" do
       log =
         capture_log([level: :error], fn ->
-          result = :error |> Errors.log(:errors)
+          result = :error |> Errors.log()
           assert result == :error
         end)
 
@@ -57,7 +57,7 @@ defmodule Errors.LogTest do
     test "logs and passes through {:error, binary}" do
       log =
         capture_log([level: :error], fn ->
-          result = {:error, "something went wrong"} |> Errors.log(:errors)
+          result = {:error, "something went wrong"} |> Errors.log()
           assert result == {:error, "something went wrong"}
         end)
 
@@ -68,7 +68,7 @@ defmodule Errors.LogTest do
     test "logs and passes through {:error, atom}" do
       log =
         capture_log([level: :error], fn ->
-          result = {:error, :timeout} |> Errors.log(:errors)
+          result = {:error, :timeout} |> Errors.log()
           assert result == {:error, :timeout}
         end)
 
@@ -80,7 +80,7 @@ defmodule Errors.LogTest do
 
       log =
         capture_log([level: :error], fn ->
-          result = {:error, exception} |> Errors.log(:errors)
+          result = {:error, exception} |> Errors.log()
           assert result == {:error, exception}
         end)
 
@@ -97,7 +97,7 @@ defmodule Errors.LogTest do
 
       log =
         capture_log([level: :error], fn ->
-          result = {:error, exception} |> Errors.log(:errors)
+          result = {:error, exception} |> Errors.log()
           assert result == {:error, exception}
         end)
 
@@ -120,7 +120,7 @@ defmodule Errors.LogTest do
 
       log =
         capture_log([level: :error], fn ->
-          result = {:error, exception} |> Errors.log(:errors)
+          result = {:error, exception} |> Errors.log()
           assert result == {:error, exception}
         end)
 
@@ -152,7 +152,7 @@ defmodule Errors.LogTest do
 
       log =
         capture_log([level: :error], fn ->
-          result = {:error, exception} |> Errors.log(:errors)
+          result = {:error, exception} |> Errors.log()
           assert result == {:error, exception}
         end)
 
@@ -167,7 +167,7 @@ defmodule Errors.LogTest do
     test "does not log :ok atom" do
       log =
         capture_log([level: :error], fn ->
-          result = :ok |> Errors.log(:errors)
+          result = :ok |> Errors.log()
           assert result == :ok
         end)
 
@@ -177,7 +177,7 @@ defmodule Errors.LogTest do
     test "does not log {:ok, value}" do
       log =
         capture_log([level: :error], fn ->
-          result = {:ok, "success"} |> Errors.log(:errors)
+          result = {:ok, "success"} |> Errors.log()
           assert result == {:ok, "success"}
         end)
 
@@ -330,7 +330,7 @@ defmodule Errors.LogTest do
     test "{:error, _} logs at level: :error - shows best default line if app not configured " do
       log =
         capture_log([level: :error], fn ->
-          {:error, "test"} |> Errors.log(:errors)
+          {:error, "test"} |> Errors.log()
         end)
 
       # With no app configured, it defaults to the first level up
@@ -361,7 +361,7 @@ defmodule Errors.LogTest do
 
       log =
         capture_log([level: :error], fn ->
-          :error |> Errors.log(:errors)
+          :error |> Errors.log()
         end)
 
       assert log =~ ~r<\[RESULT\] :error>
@@ -431,14 +431,14 @@ defmodule Errors.LogTest do
     test "no logs at any level if :ok result and mode is :errors" do
       log =
         capture_log([level: :debug], fn ->
-          :ok |> Errors.log(:errors)
+          :ok |> Errors.log()
         end)
 
       refute log =~ "RESULT"
 
       log =
         capture_log([level: :debug], fn ->
-          {:ok, 123} |> Errors.log(:errors)
+          {:ok, 123} |> Errors.log()
         end)
 
       refute log =~ "RESULT"
