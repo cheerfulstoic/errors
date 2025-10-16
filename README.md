@@ -220,7 +220,9 @@ defmodule MyAppWeb.UserController do
       MyApp.Users.create_user(params)
       |> Errors.log(:errors)
     end)
-    # ...
+  end
+end
+
 
 # The line in the log might look something like:
 # [error] [RESULT] lib/some_library.ex:4: {:error, #Ecto.Changeset<...>}
