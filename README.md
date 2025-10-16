@@ -46,6 +46,7 @@ end
 # When an error occurs, you get a `reason` which is a `Errors.WrappedError` exception struct.
 {:error, reason} = Users.create_user(%{name: "Alice", email: "alice@example.com"})
 
+# `Exception.message/1` is a standard Elixir function for getting message strings from exceptions
 Exception.message(reason)
 # => {:error, #Ecto.Changeset<...>}
 #        [CONTEXT] lib/my_app/users.ex:10: create user
