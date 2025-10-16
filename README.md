@@ -174,6 +174,61 @@ In this case, you could imagine that `MyApp.Users.create_user(params)` could ret
 
 Additionally, if you use `Errors.wrap_context`, additional information from the `WrappedError` will be available to help describe the error.
 
+### Steps
+
+The `step` functions provide a way to chain operations that return results. They allow you to build pipelines of transformations where errors automatically short-circuit the chain.
+
+#### `step!/1` - Execute a function + allowing exceptions to raise
+
+Takes a zero-arity function and executes it.  The function can return `:ok`, `{:ok, term()}`, `:error`, or `{:error, term()}`, but any other value is treated as `{:ok, <value>}`
+
+```elixir
+# order_id is defined / passed in
+Errors.step!(fn -> fetch_order_from_api(order_id) end)
+```
+
+#### `step!/2` - Chaining operations + allowing exceptions to raise
+
+Takes a result and a function, executing the function only if the result is successful. Unlike `step/2`, this does **not** catch exceptions:
+
+```elixir
+# Example: User registration pipeline
+Errors.step!(fn -> fetch_order_from_api(order_id) end)
+|> Errors.step!(&validate_order/1)
+|> Errors.step!(fn order -> change_for_order(order, user.payment_info) end)
+# => {:ok, user} if all steps succeed
+# If any step returns an error, further steps are ignored and the error is passed through
+
+# When given :ok, passes nil to the function
+# Previous step returns `:ok`
+|> Errors.step!(fn nil -> send_notification() end)
+# => {:ok, notification_result}
+```
+
+#### `step/2` - Chaining operations + handling exceptions
+
+Behaves like `step!/2` but catches exceptions and wraps them in a `WrappedError` with a context:
+
+```elixir
+# Example: Processing an API response
+{:ok, response}
+|> Errors.step(fn response -> Jason.decode!(response.body) end)  # Might raise
+|> Errors.step(&validate_schema/1)
+|> Errors.step(&transform_data/1)
+# => {:ok, transformed_data}
+
+# Catches exceptions during parsing
+|> Errors.step!(fn -> String.to_integer(value) end)  # Raises if not a valid integer
+|> Errors.step!(&update_config/1)  # Never called if parsing raises
+# => {:error, %Errors.WrappedError{reason: %ArgumentError{...}}}
+```
+
+**When to use which:**
+
+- Use `step!/2` when you want exceptions to propagate (fail fast)
+- Use `step/2` when you want to handle exceptions as errors in your pipeline
+- Use `step!/1` to normalize function returns into result tuples
+
 ## API Reference
 
 ### `Errors.wrap_context/3`
