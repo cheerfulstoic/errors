@@ -209,7 +209,7 @@ Returns the original result unchanged.
 
 ## Configuration
 
-#### `app`
+### `app`
 
 Because of how tail-call optimisation affects stack-traces in Elixir, logging a result may not give the right line.  An example is when you give an anonymous function to a library:
 
@@ -229,11 +229,95 @@ defmodule MyAppWeb.UserController do
 # [error] [RESULT] lib/my_app_web/user_controller.ex:5: {:error, #Ecto.Changeset<...>}
 ```
 
-In order to help log the correct entries from the stacktrace, you can optionally configure our app's name to help it be found:
+In order to help log the correct entries from the stacktrace, you can optionally configure your app's name to help it be found:
 
 ```elixir
 # config/config.exs
 config :errors, :app, :your_app_name
+```
+
+### `log_adapter`
+
+By default, logs are formatted as human-readable plain text. You can configure a different log adapter to change the output format. The library includes a JSON log adapter for structured logging:
+
+```elixir
+# config/config.exs
+config :errors, :log_adapter, Errors.LogAdapter.JSON
+```
+
+With the JSON adapter enabled, logs will be output as JSON objects:
+
+```elixir
+# Example function with wrap_context:
+defmodule MyApp.Users do
+  def update_email(user_id, new_email) do
+    user = get_user!(user_id)
+
+    update_user(user, %{email: new_email})
+    |> Errors.wrap_context("update email", %{user_id: user_id, email: new_email})
+  end
+end
+
+# Usage:
+MyApp.Users.update_email(123, "new@example.com")
+|> Errors.log(:errors)
+```
+
+Plain text format (default):
+
+```
+[error] [RESULT] lib/my_app_web/user_controller.ex:15: {:error, #Ecto.Changeset<...>}
+    [CONTEXT] lib/my_app/users.ex:42: update email | %{user_id: 123, email: "new@example.com"}
+```
+
+JSON format (spacing inserted for readability here):
+
+```
+[error] {
+  "source": "Errors",
+  "stacktrace_line": "lib/my_app_web/user_controller.ex:15",
+  "result_details": {
+    "type": "error",
+    "value": {
+      "__contexts__": [
+        {
+          "label":"update email",
+          "metadata": {"user_id" 123, "email": "user@domain.com"},
+          "stacktrace": [
+            "(my_app 0.1.0) lib/my_app/users.ex:42: MyApp.Users.update_email/2",
+            ...
+          ]
+        }
+      ],
+      "__root_reason__": {
+        "__struct__": "Ecto.Changeset",
+        "params": {
+          "email": 123,
+        },
+        "errors": {
+          "email": "{\"is invalid\", [type: :string, validation: :cast]}"
+        },
+        ...
+      }
+    },
+    "message": "{:error, #Ecto.Changeset<...>}\n    [CONTEXT] lib/my_app/users.ex:42: update email %{user_id: 123, email: \"new@example.com\"}"
+  }
+}
+```
+
+You can also implement your own custom log adapter by using the `Errors.LogAdapter` behaviour.
+
+### `json`
+
+When using the JSON log adapter, you can configure which JSON library to use. By default, it uses `Jason`:
+
+```elixir
+# config/config.exs
+
+# default
+config :errors, :json, Jason
+# Built-in JSON module in Elixir 1.18+
+config :errors, :json, JSON
 ```
 
 ## Development
