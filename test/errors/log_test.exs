@@ -136,7 +136,7 @@ defmodule Errors.LogTest do
 
       assert log =~
                ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, :failed}
-    \[CONTEXT\] lib/errors/test_helper.ex:10: %{foo: 123, bar: \"baz\"}>
+    \[CONTEXT\] lib/errors/test_helper.ex:10: %{bar: \"baz\", foo: 123}>
     end
 
     test "Nested WrappedError" do
@@ -640,7 +640,7 @@ defmodule Errors.LogTest do
       assert data["result_details"]["type"] == "error"
 
       assert data["result_details"]["message"] ==
-               "{:error, #RuntimeError<...>} (message: an example error message)\n    [CONTEXT] lib/errors/test_helper.ex:10: higher up %{something: %{whatever: :hello}}\n    [CONTEXT] lib/errors/test_helper.ex:18: lower down %{foo: 123, bar: \"baz\"}"
+               "{:error, #RuntimeError<...>} (message: an example error message)\n    [CONTEXT] lib/errors/test_helper.ex:10: higher up %{something: %{whatever: :hello}}\n    [CONTEXT] lib/errors/test_helper.ex:18: lower down %{bar: \"baz\", foo: 123}"
 
       assert data["result_details"]["value"] == %{
                "__contexts__" => [

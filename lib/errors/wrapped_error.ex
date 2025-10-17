@@ -136,7 +136,7 @@ defmodule Errors.WrappedError do
 
   defp format_metadata(error) do
     if map_size(error.metadata) > 0 do
-      inspect(error.metadata)
+      inspect(error.metadata, custom_options: [sort_maps: true])
     end
   end
 end
