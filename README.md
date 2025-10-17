@@ -241,39 +241,6 @@ Log output when String.to_integer/1 raises:
 - Use `step/2` when you want to handle exceptions as errors in your pipeline
 - Use `step!/1` to normalize function returns into result tuples
 
-## API Reference
-
-### `Errors.wrap_context/3`
-
-```elixir
-wrap_context(result, context, metadata \\ %{})
-```
-
-Wraps error results with context information. Success results pass through unchanged.
-
-- `result` - `:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`
-- `context` - A string describing what operation was being performed
-- `metadata` - A map of additional metadata (optional)
-
-Returns the original result if successful, or `{:error, %Errors.WrappedError{}}` if an error.
-
-### `Errors.log/2`
-
-```elixir
-log(result, mode)
-```
-
-Logs results and passes them through unchanged.
-
-- `result` - `:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`
-- `mode` - `:errors` (only log errors, the default if nothing is given) or `:all` (log all results)
-
-Returns the original result unchanged.
-
-### `Errors.user_message/1`
-
-- `reason` - Any `term()` value
-
 ## Configuration
 
 ### `app`
