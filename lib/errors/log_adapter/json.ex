@@ -78,20 +78,24 @@ defmodule Errors.JSONOrdered do
   def new(data) when is_list(data), do: %Errors.JSONOrdered{data: data}
 end
 
-defimpl JSON.Encoder, for: Errors.JSONOrdered do
-  def encode(%{data: []}, _encoder), do: "{}"
+if Code.ensure_loaded?(JSON) do
+  defimpl JSON.Encoder, for: Errors.JSONOrdered do
+    def encode(%{data: []}, _encoder), do: "{}"
 
-  def encode(%{data: data}, encoder) do
-    # Implementation inspired by the the struct encoding logic in JSON.Encoder
-    # See: https://github.com/elixir-lang/elixir/blob/v1.18.1/lib/elixir/lib/json.ex#L60
+    def encode(%{data: data}, encoder) do
+      # Implementation inspired by the the struct encoding logic in JSON.Encoder
+      # See: https://github.com/elixir-lang/elixir/blob/v1.18.1/lib/elixir/lib/json.ex#L60
 
-    {io, _} =
-      data
-      |> Enum.flat_map_reduce(?{, fn {field, value}, prefix ->
-        key = IO.iodata_to_binary([prefix, :elixir_json.encode_binary(Atom.to_string(field)), ?:])
-        {[key, encoder.(value, encoder)], ?,}
-      end)
+      {io, _} =
+        data
+        |> Enum.flat_map_reduce(?{, fn {field, value}, prefix ->
+          key =
+            IO.iodata_to_binary([prefix, :elixir_json.encode_binary(Atom.to_string(field)), ?:])
 
-    io ++ [?}]
+          {[key, encoder.(value, encoder)], ?,}
+        end)
+
+      io ++ [?}]
+    end
   end
 end
