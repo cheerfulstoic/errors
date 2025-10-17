@@ -492,6 +492,11 @@ defmodule Errors.LogTest do
 
       [_, json] = Regex.run(~r/\[info\] (.*)/, log)
 
+      # Make sure id comes first, __struct__ second, and everything else alphabetically
+      assert json =~ ~r<"id":123,"__struct__":.*\"bar\":.*\"user_id\":>
+
+      assert json =~ ~r<"id":789,"__struct__":.*\"fooID\":.*\"name\">
+
       data = Jason.decode!(json)
 
       assert data["source"] == "Errors"

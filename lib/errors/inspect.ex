@@ -46,13 +46,20 @@ defmodule Errors.Inspect do
 
   defp attributes_string(attributes) do
     attributes
-    |> Enum.sort_by(fn
-      {:id, _} -> -1
-      {"id", _} -> -1
-      {key, _} -> to_string(key)
-    end)
+    |> order_map_keys()
     |> Enum.map_join(", ", fn {key, value} ->
       "#{key}: #{inspect_shrunken_representation(value)}"
+    end)
+  end
+
+  def order_map_keys(map) when is_map(map) do
+    map
+    |> Enum.sort_by(fn
+      {:id, _} -> -2
+      {"id", _} -> -2
+      {:__struct__, _} -> -1
+      {"__struct__", _} -> -1
+      {key, _} -> to_string(key)
     end)
   end
 
