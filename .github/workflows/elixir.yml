@@ -19,13 +19,18 @@ jobs:
     name: Build and test
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        otp: ["24", "28"]
+        elixir: ["1.10", "1.15", "1.18"]
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up Elixir
         uses: erlef/setup-beam@566deebc640988a494af16ecdf6f820fe0d3fea4 # v1.16.0
         with:
-          elixir-version: "1.15.2"
-          otp-version: "26.0"
+          otp-version: ${{matrix.otp}}
+          elixir-version: ${{matrix.elixir}}
       - name: Restore dependencies cache
         uses: actions/cache@v3
         with:
