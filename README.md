@@ -58,13 +58,16 @@ See the description of `Errors.user_message` below for how wrapped errors can be
 
 The `log/2` function logs results and passes them through unchanged, making it perfect for debugging pipelines.
 
-#### Logging Errors Only (`:errors` mode)
+#### Logging Errors Only (the default)
 
 ```elixir
 defmodule API.UserController do
   def create(conn, params) do
     Users.create_user(params)
-    |> Errors.log()  # Only logs if there's an error
+    # Only logs if there's an error
+    |> Errors.log()
+    # You can also pass :errors (the default)
+    # |> Errors.log(:errors)
     |> case do
       {:ok, user} ->
         conn
@@ -77,9 +80,11 @@ defmodule API.UserController do
     end
   end
 end
+```
 
-# When Users.create_user returns an error, a log is written at the `error` log level:
+When `Users.create_user` returns an error, a log is written at the `error` log level:
 
+```
 # [error] [RESULT] lib/api/user_controller.ex:4: {:error, #Ecto.Changeset<...>}
 ```
 
@@ -87,7 +92,7 @@ end
 
 In the case above, instead of calling `|> log(:errors)`  we could call `|> log(:all)`. In that case we could get the error log above, or we could get a success result written to the log at the `info` level:
 
-```elixir
+```
 # [info] [RESULT] lib/api/user_controller.ex:4: {:ok, %MyApp.Users.User{...}}
 ```
 
