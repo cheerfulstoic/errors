@@ -199,43 +199,41 @@ defmodule Errors do
       {:error, %Errors.WrappedError{}}
   """
   def step(result, func) do
-    # {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-    # dbg(stacktrace)
-    # stacktrace = Stacktrace.calling_stacktrace()
-    # dbg(stacktrace)
-
     # telemetry_step_span(func, input, context, fn ->
     try do
       step!(result, func)
     rescue
       exception ->
-        # dbg(__STACKTRACE__)
-
         {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
-        # catch
-        #   :throw, value ->
-        #     {:error, "Value was thrown: #{inspect(value)}"}
     end
+  end
 
-    # |> case do
-    #   {:ok, new_state} ->
-    #     {:ok, new_state}
-    #
-    #   {:error, error_value} ->
-    #     if wrap_step_function_errors?() do
-    #       {:error, StepFunctionError.exception({func, error_value, nil, false})}
-    #     else
-    #       {:error, error_value}
-    #     end
-    #
-    #   other ->
-    #     {:error,
-    #      Error.exception(
-    #        {func, context,
-    #         "Value other than {:ok, _} or {:error, _} returned for step function: #{inspect(other)}"}
-    #      )}
-    # end
-    # end)
+  def map!(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map!/2")
+
+  def map!({:ok, enumerable}, func) do
+    Enum.map(enumerable, &step!({:ok, &1}, func))
+  end
+
+  def map!(:error, _), do: :error
+  def map!({:error, _} = error, _), do: error
+
+  def map!(result, _) do
+    raise ArgumentError,
+          "Argument must be {:ok, _} / {:error, _} / :error, got: #{inspect(result)}"
+  end
+
+  def map(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map/2")
+
+  def map({:ok, enumerable}, func) do
+    Enum.map(enumerable, &step({:ok, &1}, func))
+  end
+
+  def map(:error, _), do: :error
+  def map({:error, _} = error, _), do: error
+
+  def map(result, _) do
+    raise ArgumentError,
+          "Argument must be {:ok, _} / {:error, _} / :error, got: #{inspect(result)}"
   end
 
   # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
@@ -424,6 +422,58 @@ defmodule Errors do
 
     result
   end
+
+  @doc """
+  Checks if a result is a success (`:ok` or `{:ok, term()}`).
+
+  Returns `true` if the result is `:ok` or `{:ok, term()}`, `false` if it's
+  `:error` or `{:error, term()}`. Raises `ArgumentError` for any other value.
+
+  ## Examples
+
+      iex> Errors.ok?(:ok)
+      true
+
+      iex> Errors.ok?({:ok, 42})
+      true
+
+      iex> Errors.ok?(:error)
+      false
+
+      iex> Errors.ok?({:error, :not_found})
+      false
+  """
+  def ok?(:ok), do: true
+  def ok?({:ok, _}), do: true
+  def ok?(:error), do: false
+  def ok?({:error, _}), do: false
+  def ok?(result), do: validate_result!(result)
+
+  @doc """
+  Checks if a result is an error (`:error` or `{:error, term()}`).
+
+  Returns `true` if the result is `:error` or `{:error, term()}`, `false` if it's
+  `:ok` or `{:ok, term()}`. Raises `ArgumentError` for any other value.
+
+  ## Examples
+
+      iex> Errors.error?(:error)
+      true
+
+      iex> Errors.error?({:error, :not_found})
+      true
+
+      iex> Errors.error?(:ok)
+      false
+
+      iex> Errors.error?({:ok, 42})
+      false
+  """
+  def error?(:ok), do: false
+  def error?({:ok, _}), do: false
+  def error?(:error), do: true
+  def error?({:error, _}), do: true
+  def error?(result), do: validate_result!(result)
 
   defp validate_result!(:ok), do: nil
   defp validate_result!(:error), do: nil

@@ -246,6 +246,67 @@ Log output when String.to_integer/1 raises:
 - Use `step/2` when you want to handle exceptions as errors in your pipeline
 - Use `step!/1` to normalize function returns into result tuples
 
+### Mapping
+
+The `map` functions provide a way to apply operations to each element in a collection wrapped in a result tuple. They allow you to transform collections while handling errors for individual elements.
+
+#### `map!/2` - Map over collections + allowing exceptions to raise
+
+Takes a result tuple containing a collection and a function that returns result tuples. Maps the function over each element, allowing exceptions to propagate:
+
+```elixir
+order_line_items
+|> Errors.map!(&validate_line_item/1)
+```
+
+If, instead, there was an `InvalidError` raised, the map would stop where that happened. This is useful if you'd rather fail than have something processed halfway.
+
+#### `map/2` - Map over collections + handling exceptions
+
+Behaves like `map!/2` but catches exceptions and wraps them in `WrappedError`.  Useful when you want to make sure you process everything but also want to know when things fail.
+
+```elixir
+# `fetch_users/1` returns {:ok, [...]} or :error
+fetch_users(user_ids)
+|> Errors.map(fn user ->
+  if user.email_verified do
+    # Returns :ok or raises an exception
+    send_email(user)
+  else
+    {:error, :email_not_verified}
+  end
+end)
+
+# Result where one user hasn't validated email and one email timed out while sending
+# WrappedError wraps a %MyApp.EmailClient.TimeoutError{}
+# [:ok, {:error, :email_not_verified}, {:error, %Errors.WrappedError{...}}]
+
+# If the initial fetch fails, the error passes through unchanged:
+{:error, :user_service_unavailable}
+|> Errors.map!(fn user -> send_email(user) end)
+# => {:error, :user_service_unavailable}
+```
+
+With the list of results, you may want to just get the error results:
+
+```elixir
+|> Enum.filter(&Errors.error?/1)
+```
+
+Or you may want to split the ok and error results:
+
+```elixir
+|> Enum.split_with(&Errors.ok?/1)
+|> case do
+  {successes, []} ->
+    # No errors
+    # ...
+
+  {successes, errors} ->
+    # Some errors
+  end
+```
+
 ## Configuration
 
 ### `app`
