@@ -1,4 +1,6 @@
 defmodule Errors.LogAdapter.Plain do
+  @moduledoc false
+
   alias Errors.Stacktrace
 
   use Errors.LogAdapter

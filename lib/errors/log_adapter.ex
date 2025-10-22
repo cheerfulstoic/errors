@@ -1,5 +1,9 @@
 defmodule Errors.LogAdapter do
+  @moduledoc false
+
   defmodule LogDetails do
+    @moduledoc false
+
     defstruct [:result, :result_details, :stacktrace]
 
     def new(result, stacktrace) do

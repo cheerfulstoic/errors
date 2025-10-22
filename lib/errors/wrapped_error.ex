@@ -54,7 +54,7 @@ defmodule Errors.WrappedError do
 
     context_string =
       errors
-      |> Enum.map(fn error ->
+      |> Enum.map_join("\n", fn error ->
         context_desc =
           cond do
             is_function(error.context) ->
@@ -76,7 +76,6 @@ defmodule Errors.WrappedError do
 
         "    [CONTEXT] #{parts_string}"
       end)
-      |> Enum.join("\n")
 
     message = Errors.result_details(List.last(errors).result).message
 
@@ -88,7 +87,7 @@ defmodule Errors.WrappedError do
 
     context_string =
       errors
-      |> Enum.map(fn error ->
+      |> Enum.map_join("\n", fn error ->
         context_desc =
           if is_function(error.context) do
             function_info = Function.info(error.context)
@@ -105,7 +104,6 @@ defmodule Errors.WrappedError do
 
         "    [CONTEXT] #{parts_string}"
       end)
-      |> Enum.join("\n")
 
     message = Errors.result_details(List.last(errors).result).message
 

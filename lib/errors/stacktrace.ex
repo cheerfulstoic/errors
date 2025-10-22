@@ -1,4 +1,6 @@
 defmodule Errors.Stacktrace do
+  @moduledoc "Tools to get relevant stacktrace info for app using the Errors library"
+
   # Using a macro so that this helper function isn't part of the stacktrace
   defmacro calling_stacktrace do
     quote do

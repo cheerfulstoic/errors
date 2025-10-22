@@ -1,4 +1,6 @@
 defmodule Errors.String do
+  @moduledoc false
+
   @alphanumeric_graphemes String.graphemes("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
   def generate(length) do

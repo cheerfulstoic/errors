@@ -1,4 +1,6 @@
 defmodule Errors.LogAdapter.JSON do
+  @moduledoc false
+
   alias Errors.Stacktrace
 
   use Errors.LogAdapter
@@ -73,6 +75,8 @@ end
 # Namespaced to avoid a problem if somebody does bring that library in
 
 defmodule Errors.JSONOrdered do
+  @moduledoc "Add ability to output ordered JSON with Elixir's JSON module"
+
   defstruct [:data]
 
   def new(data) when is_list(data), do: %Errors.JSONOrdered{data: data}

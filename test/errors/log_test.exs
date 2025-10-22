@@ -377,7 +377,6 @@ defmodule Errors.LogTest do
       assert log =~ ~r<\[RESULT\] :error>
     end
 
-    # TODO: Show that :ok results don't log when logging :errors
     # :ok results
     test "{:ok, _} logs at level: :info - shows app line if app configured" do
       Application.put_env(:errors, :app, :errors)

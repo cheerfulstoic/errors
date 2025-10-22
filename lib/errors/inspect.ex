@@ -1,4 +1,9 @@
 defmodule Errors.Inspect do
+  @moduledoc """
+  Logic to do smart inspecting of values.  Part of that is outputting only the most useful
+  attributes for debugging (IDs, names, etc...)
+  """
+
   @max_shrunken_entities 10
 
   def inspect(value) do
@@ -102,8 +107,6 @@ defmodule Errors.Inspect do
     |> Map.delete(:message)
     |> Map.put(:__struct__, Macro.to_string(exception.__struct__))
     |> Map.put(:__message__, Exception.message(exception))
-
-    # TODO: shrink / reduce values?
   end
 
   def shrunken_representation(%mod{} = struct, _sub_value?) do
