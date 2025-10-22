@@ -13,7 +13,7 @@ defmodule Errors.LogAdapter do
 
   @type log_level :: atom()
 
-  @callback call(Errors.LogAdapter.LogDetails.t()) :: {log_level(), String.t()} | nil
+  @callback call(Errors.LogAdapter.LogDetails.t()) :: {log_level(), String.t(), keyword()} | nil
 
   defmacro __using__(_opts) do
     quote do

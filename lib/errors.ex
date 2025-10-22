@@ -276,7 +276,9 @@ defmodule Errors do
     %{
       type: "error",
       message: Exception.message(exception),
-      value: Errors.Inspect.shrunken_representation(exception)
+      value: Errors.Inspect.shrunken_representation(exception),
+      # Flattened errors
+      wrapped_errors: WrappedError.unwrap(exception)
     }
   end
 
@@ -403,20 +405,28 @@ defmodule Errors do
   """
   def log(result, mode \\ :errors) do
     validate_result!(result)
+    |> dbg()
 
     if mode not in [:errors, :all] do
       raise ArgumentError, "mode must be either :errors or :all (got: #{inspect(mode)})"
     end
+    |> dbg()
 
-    stacktrace = Stacktrace.calling_stacktrace()
+    stacktrace =
+      Stacktrace.calling_stacktrace()
+      |> dbg()
 
-    log_details = LogAdapter.LogDetails.new(result, stacktrace)
+    log_details =
+      LogAdapter.LogDetails.new(result, stacktrace)
+      |> dbg()
 
-    adapter_mod = Application.get_env(:errors, :log_adapter, LogAdapter.Plain)
+    adapter_mod =
+      Application.get_env(:errors, :log_adapter, LogAdapter.Plain)
+      |> dbg()
 
-    with {level, message} <- adapter_mod.call(log_details) do
+    with {level, message, metadata} <- adapter_mod.call(log_details) |> dbg() do
       if log_details.result_details.type == "error" || mode == :all do
-        Logger.log(level, message)
+        Logger.log(level, message, metadata)
       end
     end
 

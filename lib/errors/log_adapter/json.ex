@@ -15,12 +15,16 @@ defmodule Errors.LogAdapter.JSON do
     {
       level,
       json_mod().encode!(
-        data(%{
-          source: "Errors",
-          stacktrace_line: stacktrace_line,
-          result_details: log_details.result_details
-        })
-      )
+        data(
+          %{
+            source: "Errors",
+            stacktrace_line: stacktrace_line,
+            result_details: log_details.result_details
+          }
+          |> dbg()
+        )
+      ),
+      []
     }
   end
 

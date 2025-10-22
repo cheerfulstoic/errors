@@ -17,6 +17,6 @@ defmodule Errors.LogAdapter.Plain do
       |> Enum.reject(&is_nil/1)
       |> Enum.join(": ")
 
-    {level, "[RESULT] #{parts_string}"}
+    {level, "[RESULT] #{parts_string}", []}
   end
 end
