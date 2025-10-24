@@ -307,6 +307,48 @@ Or you may want to split the ok and error results:
   end
 ```
 
+### Logging JSON
+
+By default, logs are formatted as human-readable plain text. If you would like to output JSON logs, you can use a library like [`logger_json`](https://github.com/Nebo15/logger_json). The `Errors.log` function sets the `errors_result_details` metadata key as well as setting metadata given by `wrap_context` calls.  You can set these keys as output in your [logger configuration](https://hexdocs.pm/logger/Logger.html#module-metadata).  The `errors_result_details` key gives nested a key/value structure, so it won't be outputted with default logs and makes sense when outputting structured logs like with `json`.
+
+Here is an example of configuring metadata:
+
+```elixir
+# config/config.exs
+config :logger, :console,
+ format: "[$level] $message $metadata\n",
+ metadata: [:user_id]
+```
+
+To configure `logger_json`, you might use something like this:
+
+```elixir
+config :logger, :default_handler,
+  formatter:
+    LoggerJSON.Formatters.Basic.new(metadata: [:user_id, :errors_result_details])
+```
+
+If you were to use `Errors.wrap_context("updating user", user_id: 123)`:
+
+With standard logging you'd get `user_id=123` just like if you gave the metadata to `Logger.error` yourself.
+
+Here is an example of what you might get with `logger_json` (spacing introduced for readability):
+
+```json
+{"
+  message":"[RESULT] {:error, :not_found}\n    [CONTEXT] updating user %{user_id: 123}",
+  "time":"2025-10-24T13:20:06.885Z",
+  "metadata": {
+    "errors_result_details": {
+      "reason":"not_found",
+      "type":"error"
+    },
+    "user_id":123
+  },
+  "severity":"error"
+}
+```
+
 ## Configuration
 
 ### `app`
@@ -336,90 +378,6 @@ In order to help log the correct entries from the stacktrace, you can optionally
 ```elixir
 # config/config.exs
 config :errors, :app, :your_app_name
-```
-
-### `log_adapter`
-
-By default, logs are formatted as human-readable plain text. You can configure a different log adapter to change the output format. The library includes a JSON log adapter for structured logging:
-
-```elixir
-# config/config.exs
-config :errors, :log_adapter, Errors.LogAdapter.JSON
-```
-
-With the JSON adapter enabled, logs will be output as JSON objects:
-
-```elixir
-# Example function with wrap_context:
-defmodule MyApp.Users do
-  def update_email(user_id, new_email) do
-    user = get_user!(user_id)
-
-    update_user(user, %{email: new_email})
-    |> Errors.wrap_context("update email", %{user_id: user_id, email: new_email})
-  end
-end
-
-# Usage:
-MyApp.Users.update_email(123, "new@example.com")
-|> Errors.log()
-```
-
-Plain text format (default):
-
-```
-[error] [RESULT] lib/my_app_web/user_controller.ex:15: {:error, #Ecto.Changeset<...>}
-    [CONTEXT] lib/my_app/users.ex:42: update email | %{user_id: 123, email: "new@example.com"}
-```
-
-JSON format (spacing inserted for readability here):
-
-```
-[error] {
-  "source": "Errors",
-  "stacktrace_line": "lib/my_app_web/user_controller.ex:15",
-  "result_details": {
-    "type": "error",
-    "value": {
-      "__contexts__": [
-        {
-          "label":"update email",
-          "metadata": {"user_id" 123, "email": "user@domain.com"},
-          "stacktrace": [
-            "(my_app 0.1.0) lib/my_app/users.ex:42: MyApp.Users.update_email/2",
-            ...
-          ]
-        }
-      ],
-      "__root_reason__": {
-        "__struct__": "Ecto.Changeset",
-        "params": {
-          "email": 123
-        },
-        "errors": {
-          "email": "{\"is invalid\", [type: :string, validation: :cast]}"
-        },
-        ...
-      }
-    },
-    "message": "{:error, #Ecto.Changeset<...>}\n    [CONTEXT] lib/my_app/users.ex:42: update email %{user_id: 123, email: \"new@example.com\"}"
-  }
-}
-```
-
-You can also implement your own custom log adapter by using the `Errors.LogAdapter` behaviour.
-
-### `json`
-
-When using the JSON log adapter, you can configure which JSON library to use. By default, it uses `Jason`:
-
-```elixir
-# config/config.exs
-
-# default
-config :errors, :json, Jason
-# Built-in JSON module in Elixir 1.18+
-config :errors, :json, JSON
 ```
 
 ## Development
