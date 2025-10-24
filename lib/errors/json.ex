@@ -1,5 +1,12 @@
 defmodule Errors.JSON do
-  # This function exists to reduce the data that is sent out (logs/teleetry) to
+  @moduledoc """
+    Helpers for JSON output
+
+    This library doesn't output JSON itself, but it's useful to be able to turn
+    terms into a JSON-friendly format
+  """
+
+  # This function exists to reduce the data that is sent out (logs/telemetry) to
   # the fields that are the most useful for debugging.  Currently that is
   # just identifying fields (`id` or `*_id` fields, along with `type` fields
   # to identify structs), but it could be other things later if we can

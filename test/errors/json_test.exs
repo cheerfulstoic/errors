@@ -13,7 +13,7 @@ defmodule Errors.JSONTest do
     defstruct [:id, :foo, :user_id, :bar]
   end
 
-  defmodule CustomException do
+  defmodule CustomError do
     defexception [:message, :code]
   end
 
@@ -296,12 +296,12 @@ defmodule Errors.JSONTest do
     end
 
     test "shrinks custom exception with extra fields" do
-      exception = %CustomException{message: "custom error", code: 500}
+      exception = %CustomError{message: "custom error", code: 500}
 
       result = shrink(exception)
 
       assert result == %{
-               __struct__: "Errors.JSONTest.CustomException",
+               __struct__: "Errors.JSONTest.CustomError",
                __message__: "custom error",
                code: 500
              }
