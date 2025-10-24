@@ -335,17 +335,17 @@ With standard logging you'd get `user_id=123` just like if you gave the metadata
 Here is an example of what you might get with `logger_json` (spacing introduced for readability):
 
 ```json
-{"
-  message":"[RESULT] {:error, :not_found}\n    [CONTEXT] updating user %{user_id: 123}",
-  "time":"2025-10-24T13:20:06.885Z",
+{
+  "message": "[RESULT] {:error, :not_found}\n    [CONTEXT] updating user %{user_id: 123}",
+  "time": "2025-10-24T13:20:06.885Z",
   "metadata": {
     "errors_result_details": {
-      "reason":"not_found",
-      "type":"error"
+      "reason": "not_found",
+      "type": "error"
     },
-    "user_id":123
+    "user_id": 123
   },
-  "severity":"error"
+  "severity": "error"
 }
 ```
 
