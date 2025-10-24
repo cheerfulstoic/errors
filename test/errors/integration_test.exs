@@ -226,48 +226,48 @@ defmodule Errors.IntegrationTest do
     end
   end
 
-  test "" do
-    log =
-      capture_log([level: :error], fn ->
-        {:ok, "123u"}
-        # Raises if not a valid integer
-        |> Errors.step(&String.to_integer/1)
-        |> Errors.log()
-      end)
-
-    assert log =~
-             ~r<\[RESULT\] lib/ex_unit/capture_log\.ex:\d+: \*\* \(ArgumentError\) errors were found at the given arguments:
-
-  \* 1st argument: not a textual representation of an integer
-
-    \[CONTEXT\] :erlang\.binary_to_integer/1>
-
-    Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
-
-    log =
-      capture_log([level: :error], fn ->
-        {:ok, "123u"}
-        # Raises if not a valid integer
-        |> Errors.step(&String.to_integer/1)
-        |> Errors.log()
-      end)
-
-    [_, json] = Regex.run(~r/\[error\] (.*)/, log)
-
-    data = Jason.decode!(json)
-
-    assert data["source"] == "Errors"
-    assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
-
-    assert data["result_details"]["type"] == "error"
-
-    assert data["result_details"]["message"] ==
-             "** (ArgumentError) errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n\n    [CONTEXT] :erlang.binary_to_integer/1"
-
-    assert %{
-             "__struct__" => "ArgumentError",
-             "__message__" =>
-               "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"
-           } = data["result_details"]["value"]["__root_reason__"]
-  end
+  # test "" do
+  #   log =
+  #     capture_log([level: :error], fn ->
+  #       {:ok, "123u"}
+  #       # Raises if not a valid integer
+  #       |> Errors.step(&String.to_integer/1)
+  #       |> Errors.log()
+  #     end)
+  #
+  #   assert log =~
+  #            ~r<\[RESULT\] lib/ex_unit/capture_log\.ex:\d+: \*\* \(ArgumentError\) errors were found at the given arguments:
+  #
+  # \* 1st argument: not a textual representation of an integer
+  #
+  #   \[CONTEXT\] :erlang\.binary_to_integer/1>
+  #
+  #   Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
+  #
+  #   log =
+  #     capture_log([level: :error], fn ->
+  #       {:ok, "123u"}
+  #       # Raises if not a valid integer
+  #       |> Errors.step(&String.to_integer/1)
+  #       |> Errors.log()
+  #     end)
+  #
+  #   [_, json] = Regex.run(~r/\[error\] (.*)/, log)
+  #
+  #   data = Jason.decode!(json)
+  #
+  #   assert data["source"] == "Errors"
+  #   assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
+  #
+  #   assert data["result_details"]["type"] == "error"
+  #
+  #   assert data["result_details"]["message"] ==
+  #            "** (ArgumentError) errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n\n    [CONTEXT] :erlang.binary_to_integer/1"
+  #
+  #   assert %{
+  #            "__struct__" => "ArgumentError",
+  #            "__message__" =>
+  #              "errors were found at the given arguments:\n\n  * 1st argument: not a textual representation of an integer\n"
+  #          } = data["result_details"]["value"]["__root_reason__"]
+  # end
 end

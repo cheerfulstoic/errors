@@ -4,212 +4,91 @@ defmodule Errors.Inspect do
   attributes for debugging (IDs, names, etc...)
   """
 
-  @max_shrunken_entities 10
+  defmodule Wrapper do
+    @moduledoc """
+    Struct to simply hold some term(). To be able to render an inspect string
+    by controlling the algebra (see `defimpl Inspect, for: Errors.Inspect.Wrapper do` below)
+    If there's an official way in the Elixir API to take algebra and turn it into a string
+    then that would be better
+    """
 
-  def inspect(value) do
-    case Inspect.impl_for(value) do
-      Inspect.Any ->
-        shrunken_inspect(value)
-
-      _ ->
-        Kernel.inspect(value)
-    end
+    defstruct [:value]
   end
 
-  defp shrunken_inspect(value) do
-    value
-    |> shrunken_representation()
-    |> Map.delete(:__message__)
-    |> inspect_shrunken_representation()
+  def inspect(value, opts \\ []) do
+    Kernel.inspect(wrap_value(value), opts)
   end
 
-  defp inspect_shrunken_representation(%{__struct__: mod} = shrunken_representation) do
-    shrunken_representation =
-      shrunken_representation
-      |> Map.delete(:__struct__)
-
-    if map_size(shrunken_representation) > 0 do
-      "##{mod}<#{attributes_string(shrunken_representation)}, ...>"
-    else
-      "##{mod}<...>"
-    end
+  defp wrap_value(list) when is_list(list) do
+    Enum.map(list, &wrap_value/1)
   end
 
-  defp inspect_shrunken_representation(%{} = shrunken_representation) do
-    "#<#{attributes_string(shrunken_representation)}, ...>"
-  end
-
-  defp inspect_shrunken_representation(shrunken_representation)
-       when is_list(shrunken_representation) do
-    "[" <>
-      Enum.map_join(shrunken_representation, ", ", &inspect_shrunken_representation/1) <> ", ...]"
-  end
-
-  defp inspect_shrunken_representation(shrunken_representation) do
-    Kernel.inspect(shrunken_representation)
-  end
-
-  defp attributes_string(attributes) do
-    attributes
-    |> order_map_keys()
-    |> Enum.map_join(", ", fn {key, value} ->
-      "#{key}: #{inspect_shrunken_representation(value)}"
-    end)
-  end
-
-  def order_map_keys(map) when is_map(map) do
-    map
-    |> Enum.sort_by(fn
-      {:id, _} -> -2
-      {"id", _} -> -2
-      {:__struct__, _} -> -1
-      {"__struct__", _} -> -1
-      {key, _} -> to_string(key)
-    end)
-  end
-
-  # This function exists to reduce the data that is sent out (logs/teleetry) to
-  # the fields that are the most useful for debugging.  Currently that is
-  # just identifying fields (`id` or `*_id` fields, along with `type` fields
-  # to identify structs), but it could be other things later if we can
-  # algorithmically identify fields which would be generically helpful when
-  # debugging
-  def shrunken_representation(data, sub_value? \\ false)
-
-  def shrunken_representation(
-        %Errors.WrappedError{
-          # result: result,
-        } = exception,
-        _sub_value?
-      ) do
-    errors = Errors.WrappedError.unwrap(exception)
-    last_error = List.last(errors)
-
-    contexts =
-      Enum.map(errors, fn error ->
-        %{
-          label: shrunken_representation(error.context),
-          stacktrace: format_stacktrace(error.stacktrace),
-          metadata: shrunken_representation(error.metadata)
-        }
-      end)
-
-    %{
-      __root_reason__: shrunken_representation(last_error.reason),
-      __contexts__: contexts
-    }
-  end
-
-  def shrunken_representation(exception, _sub_value?) when is_exception(exception) do
-    exception
+  defp wrap_value(%mod{} = struct) when is_struct(struct) do
+    struct
     |> Map.from_struct()
-    |> Map.delete(:__exception__)
-    |> Map.delete(:message)
-    |> Map.put(:__struct__, Macro.to_string(exception.__struct__))
-    |> Map.put(:__message__, Exception.message(exception))
+    |> wrap_value()
+    |> then(&struct(mod, &1))
+    |> then(&%Wrapper{value: &1})
   end
 
-  def shrunken_representation(%mod{} = struct, _sub_value?) do
-    map =
-      struct
-      |> Map.from_struct()
-      |> shrunken_representation(true)
+  defp wrap_value(map) when is_map(map) do
+    Map.new(map, fn {key, value} ->
+      {key, wrap_value(value)}
+    end)
+  end
 
-    if map_size(map) > 0 do
-      map
-      |> Map.put(:__struct__, Macro.to_string(mod))
-      |> customize_fields(mod, struct)
-    else
-      map
+  defp wrap_value(value), do: value
+end
+
+defimpl Inspect, for: Errors.Inspect.Wrapper do
+  def inspect(%{value: value}, opts) do
+    inspect_value(value, opts)
+  end
+
+  defp inspect_value(%mod{} = struct, opts) do
+    map = Map.from_struct(struct)
+
+    fields =
+      mod.__info__(:struct)
+      |> Enum.filter(&include_key_value?(mod, &1.field, map[&1.field]))
+      |> order_fields()
+
+    try do
+      # The `inspect/4` function was changed to `inspect_as_struct/4` in Elixir 1.19
+      Inspect.Any.inspect_as_struct(map, Macro.inspect_atom(:literal, mod), fields, opts)
+    rescue
+      UndefinedFunctionError ->
+        Inspect.Any.inspect(map, Macro.inspect_atom(:literal, mod), fields, opts)
     end
   end
 
-  def shrunken_representation(map, sub_value?) when is_map(map) do
-    map
-    |> Enum.map(fn
-      {key, value}
-      when is_map(value) or is_list(value) or is_tuple(value) or is_function(value) ->
-        {key, shrunken_representation(value, true)}
+  defp inspect_value(value, opts), do: Inspect.inspect(value, opts)
 
-      {key, value} ->
-        {key, value}
-    end)
-    |> Enum.filter(fn
-      {_, :__LIST_WITHOUT_ITEMS__} ->
-        false
-
-      {_, nil} ->
-        !sub_value?
-
-      {key, _} when key in [:id, "id", :name, "name"] ->
-        true
-
-      {key, value} ->
-        Regex.match?(~r/[a-z](_id|Id|ID)$/, to_string(key)) or
-          (is_map(value) and map_size(value) > 0) or
-          is_list(value)
-    end)
-    |> Enum.into(%{})
-  end
-
-  def shrunken_representation(list, sub_value?) when is_list(list) do
-    if length(list) > 0 and Keyword.keyword?(list) do
-      list
-      |> Enum.into(%{})
-      |> shrunken_representation(true)
-    else
-      result = Enum.map(list, &shrunken_representation(&1, true))
-
-      cond do
-        Enum.empty?(result) ->
-          []
-
-        Enum.any?(result, &stripped_value_is_valuable?(&1, sub_value?)) ->
-          truncate_list_to(result, @max_shrunken_entities)
-
-        true ->
-          :__LIST_WITHOUT_ITEMS__
-      end
+  defp order_fields(fields) do
+    field_index_func = fn
+      :id -> -3
+      "id" -> -3
+      :name -> -2
+      "name" -> -2
+      :__struct__ -> -1
+      "__struct__" -> -1
+      key -> to_string(key)
     end
+
+    Enum.sort_by(fields, fn %{field: field} -> field_index_func.(field) end)
   end
 
-  # Not 100% sure about this approach, but trying it for now 🤷‍♂️
-  def shrunken_representation(tuple, _sub_value?) when is_tuple(tuple), do: Kernel.inspect(tuple)
-
-  def shrunken_representation(func, _sub_value?) when is_function(func) do
-    function_info = Function.info(func)
-
-    "#{Kernel.inspect(function_info[:module])}.#{function_info[:name]}/#{function_info[:arity]}"
+  defp include_key_value?(Ecto.Changeset, key, _) do
+    key in ~w[action changes data errors params valid?]a
   end
 
-  def shrunken_representation(value, _sub_value?), do: value
-
-  defp truncate_list_to(list, size)
-       when is_list(list) and is_integer(size) and length(list) <= size,
-       do: list
-
-  defp truncate_list_to(list, size) when is_list(list) and is_integer(size) do
-    Enum.take(list, size) ++ ["... #{length(list) - size} additional item(s) truncated ..."]
+  defp include_key_value?(_, key, _) when key in [:id, "id", :name, "name", :status, "status"] do
+    true
   end
 
-  defp customize_fields(map, MyApp.Accounts.User, original) do
-    map
-    |> Map.put(:name, original.name)
-    |> Map.put(:is_admin, original.is_admin)
+  defp include_key_value?(_, key, value) do
+    Regex.match?(~r/[a-z](_id|Id|ID)$/, to_string(key)) or
+      (is_map(value) and map_size(value) > 0) or
+      is_list(value) or is_struct(value)
   end
-
-  defp customize_fields(map, _, _), do: map
-
-  # Turns stacktrace into an array of strings for readability in logs
-  def format_stacktrace(stacktrace) do
-    stacktrace
-    |> Exception.format_stacktrace()
-    |> String.split("\n", trim: true)
-    |> Enum.map(&String.trim/1)
-  end
-
-  defp stripped_value_is_valuable?(map, _) when is_map(map), do: map_size(map) > 0
-  defp stripped_value_is_valuable?(list, _) when is_list(list), do: length(list) > 0
-  defp stripped_value_is_valuable?(_, true), do: false
-  defp stripped_value_is_valuable?(_, _), do: true
 end

@@ -139,6 +139,31 @@ defmodule Errors.LogTest do
     \[CONTEXT\] lib/errors/test_helper.ex:10: %{bar: \"baz\", foo: 123}>
     end
 
+    test "WrappedError with raised exception" do
+      func = fn i -> i * 2 end
+
+      exception =
+        Errors.WrappedError.new_raised(
+          %RuntimeError{message: "an example error message"},
+          # Raised exceptions get a func context when wrapped 
+          func,
+          [
+            # Made up stacktrace line using a real module so we get a realistic-ish line/number
+            {Errors.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
+          ]
+        )
+
+      log =
+        capture_log([level: :error], fn ->
+          result = {:error, exception} |> Errors.log()
+          assert result == {:error, exception}
+        end)
+
+      assert log =~
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: \*\* \(RuntimeError\) an example error message
+    \[CONTEXT\] lib/errors/test_helper.ex:10: Errors\.LogTest\.-test>
+    end
+
     test "Nested WrappedError" do
       # Nested
       exception =
@@ -151,13 +176,13 @@ defmodule Errors.LogTest do
                {Errors.TestHelper, :made_up_function, 0,
                 [file: ~c"lib/errors/test_helper.ex", line: 18]}
              ],
-             %{foo: 123, bar: "baz"}
+             %{a: 123, b: "baz"}
            )},
           "higher up",
           [
             {Errors.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
           ],
-          %{something: %{whatever: :hello}}
+          %{b: "biz", something: %{whatever: :hello}, c: :foo}
         )
 
       log =
@@ -167,11 +192,9 @@ defmodule Errors.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: RuntimeError: an example error message
-    \[CONTEXT\] lib/errors/test_helper.ex:10: higher up | %{foo: 123, bar: "baz"}
-    \[CONTEXT\] lib/errors/test_helper.ex:18: lower down | %{something: %{whatever: :hello}}>
-
-      # ~r<\[RESULT\] \(test/errors/log_test\.exs:\d+\) \[CONTEXT: higher up =\> lower down\] RuntimeError: an example error message>
+               ~r<a=123 b=baz c=foo \[error\] \[RESULT\] test/errors/log_test\.exs:\d+: {:error, #RuntimeError\<\.\.\.\>} \(message: an example error message\)
+    \[CONTEXT\] lib/errors/test_helper.ex:10: higher up %{b: "biz", c: :foo, something: %{whatever: :hello}}
+    \[CONTEXT\] lib/errors/test_helper.ex:18: lower down %{a: 123, b: "baz"}>
     end
 
     test "does not log :ok atom" do
@@ -244,7 +267,7 @@ defmodule Errors.LogTest do
 
       # Uses Ecto's `inspect` implementation
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, #Ecto\.Changeset\<action: :insert, changes: %{}, errors: \[name: {"is invalid", \[type: :string, validation: :cast\]}\], data: #Errors\.LogTest\.User\<\>, valid\?: false, \.\.\.\>}>
+               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, #Ecto\.Changeset\<action: :insert, changes: %{}, data: #Errors\.LogTest\.User\<id: nil, name: nil, \.\.\.\>, errors: \[name: {"is invalid", \[type: :string, validation: :cast\]}\], params: %{"name" =\> 1}, valid\?: false, \.\.\.\>}>
     end
 
     test "logs custom struct" do
@@ -274,7 +297,7 @@ defmodule Errors.LogTest do
 
       # Uses Ecto's `inspect` implementation
       assert log =~
-               ~r<\[RESULT\] lib\/ex_unit\/capture_log\.ex:\d+: {:error, #Errors\.LogTest\.CustomStruct\<id: 123, bar: #Errors.LogTest.OtherCustomStruct\<id: 789, fooID: 0, name: \"Cool\", \.\.\.\>, user_id: 456, \.\.\.\>}>
+               ~r<\[RESULT\] lib\/ex_unit\/capture_log\.ex:\d+: {:error, #Errors\.LogTest\.CustomStruct\<id: 123, bar: #Errors.LogTest.OtherCustomStruct\<id: 789, name: \"Cool\", fooID: 0, \.\.\.\>, user_id: 456, \.\.\.\>}>
     end
 
     test "logs :ok atom" do
@@ -312,7 +335,7 @@ defmodule Errors.LogTest do
 
       # Uses Ecto's `inspect` implementation
       assert log =~
-               ~r<\[RESULT\] lib\/ex_unit\/capture_log\.ex:\d+: {:ok, #Errors\.LogTest\.CustomStruct\<id: 123, bar: #Errors.LogTest.OtherCustomStruct\<id: 789, fooID: 0, name: \"Cool\", \.\.\.\>, user_id: 456, \.\.\.\>}>
+               ~r<\[RESULT\] lib\/ex_unit\/capture_log\.ex:\d+: {:ok, #Errors\.LogTest\.CustomStruct\<id: 123, bar: #Errors.LogTest.OtherCustomStruct\<id: 789, name: \"Cool\", fooID: 0, \.\.\.\>, user_id: 456, \.\.\.\>}>
     end
   end
 
@@ -451,262 +474,6 @@ defmodule Errors.LogTest do
         end)
 
       refute log =~ "RESULT"
-    end
-  end
-
-  describe "JSON logging" do
-    test ":ok" do
-      Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
-
-      log =
-        capture_log([level: :info], fn ->
-          :ok |> Errors.log(:all)
-        end)
-
-      [_, json] = Regex.run(~r/\[info\] (.*)/, log)
-
-      data = Jason.decode!(json)
-
-      assert data["source"] == "Errors"
-      assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
-
-      assert data["result_details"]["type"] == "ok"
-      assert data["result_details"]["message"] == ":ok"
-    end
-
-    test "{:ok, _}" do
-      Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
-
-      log =
-        capture_log([level: :info], fn ->
-          {:ok,
-           %CustomStruct{
-             id: 123,
-             foo: "thing",
-             user_id: 456,
-             bar: %OtherCustomStruct{id: 789, name: "Cool", something: "hi", fooID: 000}
-           }}
-          |> Errors.log(:all)
-        end)
-
-      [_, json] = Regex.run(~r/\[info\] (.*)/, log)
-
-      # Make sure id comes first, __struct__ second, and everything else alphabetically
-      assert json =~ ~r<"id":123,"__struct__":.*\"bar\":.*\"user_id\":>
-
-      assert json =~ ~r<"id":789,"__struct__":.*\"fooID\":.*\"name\">
-
-      data = Jason.decode!(json)
-
-      assert data["source"] == "Errors"
-      assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
-
-      assert data["result_details"]["type"] == "ok"
-
-      assert data["result_details"]["message"] ==
-               "{:ok, #Errors.LogTest.CustomStruct<id: 123, bar: #Errors.LogTest.OtherCustomStruct<id: 789, fooID: 0, name: \"Cool\", ...>, user_id: 456, ...>}"
-
-      assert data["result_details"]["value"] == %{
-               "__struct__" => "Errors.LogTest.CustomStruct",
-               "id" => 123,
-               "bar" => %{
-                 "__struct__" => "Errors.LogTest.OtherCustomStruct",
-                 "id" => 789,
-                 "fooID" => 0,
-                 "name" => "Cool"
-               },
-               "user_id" => 456
-             }
-    end
-
-    test ":error" do
-      Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
-
-      log =
-        capture_log([level: :info], fn ->
-          :error |> Errors.log(:all)
-        end)
-
-      [_, json] = Regex.run(~r/\[error\] (.*)/, log)
-
-      data = Jason.decode!(json)
-
-      assert data["source"] == "Errors"
-      assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
-
-      assert data["result_details"]["type"] == "error"
-      assert data["result_details"]["message"] == ":error"
-    end
-
-    test "{:error, %Ecto.Changeset.t()}" do
-      Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
-
-      log =
-        capture_log([level: :info], fn ->
-          %User{}
-          |> Ecto.Changeset.cast(%{name: 1}, [:name])
-          |> Ecto.Changeset.apply_action(:insert)
-          |> Errors.log(:all)
-        end)
-
-      [_, json] = Regex.run(~r/\[error\] (.*)/, log)
-
-      data = Jason.decode!(json)
-
-      assert data["source"] == "Errors"
-      assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
-
-      assert data["result_details"]["type"] == "error"
-
-      assert data["result_details"]["message"] ==
-               "{:error, #Ecto.Changeset<action: :insert, changes: %{}, errors: [name: {\"is invalid\", [type: :string, validation: :cast]}], data: #Errors.LogTest.User<>, valid?: false, ...>}"
-
-      assert data["result_details"]["value"] == %{
-               "__struct__" => "Ecto.Changeset",
-               "constraints" => [],
-               "errors" => %{
-                 "name" => "{\"is invalid\", [type: :string, validation: :cast]}"
-               },
-               "prepare" => [],
-               "repo_opts" => [],
-               "required" => [],
-               "validations" => [],
-               "params" => %{"name" => 1},
-               "types" => %{"id" => "binary_id", "name" => "string"}
-             }
-    end
-
-    test "{:error, Exception.t()}" do
-      Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
-
-      log =
-        capture_log([level: :info], fn ->
-          {:error, %CustomError{message: "custom error's message"}} |> Errors.log(:all)
-        end)
-
-      [_, json] = Regex.run(~r/\[error\] (.*)/, log)
-
-      data = Jason.decode!(json)
-
-      assert data["source"] == "Errors"
-      assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
-
-      assert data["result_details"]["type"] == "error"
-
-      assert data["result_details"]["message"] ==
-               "{:error, #Errors.LogTest.CustomError<...>} (message: custom error's message)"
-
-      assert data["result_details"]["value"] == %{
-               "__struct__" => "Errors.LogTest.CustomError",
-               "__message__" => "custom error's message"
-             }
-    end
-
-    test "{:error, Errors.WrappedError.t()}" do
-      Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
-
-      exception =
-        Errors.WrappedError.new(
-          {:error,
-           Errors.WrappedError.new(
-             {:error, %RuntimeError{message: "an example error message"}},
-             "lower down",
-             [
-               {Errors.TestHelper, :made_up_function, 0,
-                [file: ~c"lib/errors/test_helper.ex", line: 18]}
-             ],
-             %{foo: 123, bar: "baz"}
-           )},
-          "higher up",
-          [
-            {Errors.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
-          ],
-          %{something: %{whatever: :hello}}
-        )
-
-      log =
-        capture_log([level: :info], fn ->
-          {:error, exception} |> Errors.log(:all)
-        end)
-
-      [_, json] = Regex.run(~r/\[error\] (.*)/, log)
-
-      data = Jason.decode!(json)
-
-      assert data["source"] == "Errors"
-      assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
-
-      assert data["result_details"]["type"] == "error"
-
-      assert data["result_details"]["message"] ==
-               "{:error, #RuntimeError<...>} (message: an example error message)\n    [CONTEXT] lib/errors/test_helper.ex:10: higher up %{something: %{whatever: :hello}}\n    [CONTEXT] lib/errors/test_helper.ex:18: lower down %{bar: \"baz\", foo: 123}"
-
-      assert data["result_details"]["value"] == %{
-               "__contexts__" => [
-                 %{
-                   "label" => "higher up",
-                   "metadata" => %{},
-                   "stacktrace" => [
-                     "(errors 0.1.0) lib/errors/test_helper.ex:10: Errors.TestHelper.run_log/2"
-                   ]
-                 },
-                 %{
-                   "label" => "lower down",
-                   "metadata" => %{},
-                   "stacktrace" => [
-                     "(errors 0.1.0) lib/errors/test_helper.ex:18: Errors.TestHelper.made_up_function/0"
-                   ]
-                 }
-               ],
-               "__root_reason__" => %{
-                 "__message__" => "an example error message",
-                 "__struct__" => "RuntimeError"
-               }
-             }
-    end
-
-    test "{:error, atom()}" do
-      Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
-
-      log =
-        capture_log([level: :info], fn ->
-          {:error, :the_error} |> Errors.log(:all)
-        end)
-
-      [_, json] = Regex.run(~r/\[error\] (.*)/, log)
-
-      data = Jason.decode!(json)
-
-      assert data["source"] == "Errors"
-      assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
-
-      assert data["result_details"]["type"] == "error"
-
-      assert data["result_details"]["message"] == "{:error, :the_error}"
-
-      assert data["result_details"]["value"] == "the_error"
-    end
-
-    test "{:error, String.t()}" do
-      Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
-
-      log =
-        capture_log([level: :info], fn ->
-          {:error, "the error's message"} |> Errors.log(:all)
-        end)
-
-      [_, json] = Regex.run(~r/\[error\] (.*)/, log)
-
-      data = Jason.decode!(json)
-
-      assert data["source"] == "Errors"
-      assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
-
-      assert data["result_details"]["type"] == "error"
-
-      assert data["result_details"]["message"] == "{:error, \"the error's message\"}"
-
-      assert data["result_details"]["value"] == "the error's message"
     end
   end
 end

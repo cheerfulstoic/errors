@@ -4,7 +4,6 @@ defmodule Errors do
   """
 
   alias Errors.Stacktrace
-  alias Errors.LogAdapter
   alias Errors.WrappedError
   require Logger
   require Stacktrace
@@ -273,28 +272,34 @@ defmodule Errors do
   #    * #Ecto.Changeset<action: ..., changes: ..., ...>
 
   def result_details({:error, %WrappedError{} = exception}) do
-    %{
-      type: "error",
-      message: Exception.message(exception),
-      value: Errors.Inspect.shrunken_representation(exception)
-    }
+    errors = WrappedError.unwrap(exception)
+    last_error = List.last(errors)
+
+    metadata =
+      Enum.reduce(errors, %{}, fn error, metadata ->
+        Map.merge(metadata, error.metadata)
+      end)
+
+    result_details(last_error.result)
+    |> Map.put(:metadata, metadata)
+    |> Map.put(:message, Exception.message(exception))
   end
 
   def result_details({:error, %mod{} = exception}) when is_exception(exception) do
     %{
       type: "error",
       mod: mod,
+      reason: Errors.JSON.Shrink.shrink(exception),
       message:
-        "{:error, #{Errors.Inspect.inspect(exception)}} (message: #{exception_message(exception)})",
-      value: Errors.Inspect.shrunken_representation(exception)
+        "{:error, #{Errors.Inspect.inspect(exception)}} (message: #{exception_message(exception)})"
     }
   end
 
-  def result_details({:error, value}) do
+  def result_details({:error, reason}) do
     %{
       type: "error",
-      message: "{:error, #{Errors.Inspect.inspect(value)}}",
-      value: Errors.Inspect.shrunken_representation(value)
+      message: "{:error, #{Errors.Inspect.inspect(reason)}}",
+      reason: Errors.JSON.Shrink.shrink(reason)
     }
   end
 
@@ -309,7 +314,7 @@ defmodule Errors do
     %{
       type: "ok",
       message: "{:ok, #{Errors.Inspect.inspect(value)}}",
-      value: Errors.Inspect.shrunken_representation(value)
+      value: Errors.JSON.Shrink.shrink(value)
     }
   end
 
@@ -319,7 +324,11 @@ defmodule Errors do
 
   # If `result` isn't :ok/:error/{:ok, _}/{:error, _} then it was a raised exception
   def result_details(%mod{} = exception) when is_exception(exception) do
-    %{type: "raise", message: "** (#{inspect(mod)}) #{Exception.message(exception)}"}
+    %{
+      type: "raise",
+      message: "** (#{inspect(mod)}) #{Exception.message(exception)}",
+      reason: Errors.JSON.Shrink.shrink(exception)
+    }
   end
 
   defp exception_message(%mod{} = exception) when is_exception(exception) do
@@ -410,14 +419,26 @@ defmodule Errors do
 
     stacktrace = Stacktrace.calling_stacktrace()
 
-    log_details = LogAdapter.LogDetails.new(result, stacktrace)
+    {message, result_details} = Map.pop(result_details(result), :message)
 
-    adapter_mod = Application.get_env(:errors, :log_adapter, LogAdapter.Plain)
+    if result_details.type in ~w[error raise] || mode == :all do
+      level = if(result_details.type in ~w[error raise], do: :error, else: :info)
 
-    with {level, message} <- adapter_mod.call(log_details) do
-      if log_details.result_details.type == "error" || mode == :all do
-        Logger.log(level, message)
-      end
+      stacktrace_line =
+        stacktrace
+        |> Stacktrace.most_relevant_entry()
+        |> Stacktrace.format_file_line()
+
+      parts_string =
+        [stacktrace_line, message]
+        |> Enum.reject(&is_nil/1)
+        |> Enum.join(": ")
+
+      {metadata, result_details} = Map.pop(result_details, :metadata, %{})
+
+      metadata = Map.put(metadata, :errors_result_details, result_details)
+
+      Logger.log(level, "[RESULT] #{parts_string}", metadata)
     end
 
     result
