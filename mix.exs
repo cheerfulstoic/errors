@@ -7,7 +7,8 @@ defmodule Errors.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      docs: docs()
     ]
   end
 
@@ -15,6 +16,28 @@ defmodule Errors.MixProject do
   def application do
     [
       extra_applications: [:logger]
+    ]
+  end
+
+  defp docs do
+    [
+      extra_section: "GUIDES",
+      source_url: @source_url,
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
+      extras: [
+        # "guides/introduction/Getting Started.md",
+        "guides/introduction/Contexts.md",
+        "guides/introduction/Control Flow.md",
+        "guides/introduction/Enumerating Errors.md",
+        "guides/examples/find_working_url.md",
+        "CHANGELOG.md"
+      ],
+      groups_for_extras: [
+        Introduction: ~r/guides\/introduction\/.?/,
+        "Real-life Examples": ~r/guides\/examples\/.?/
+      ]
+      # main: "Getting Started",
+      # api_reference: false
     ]
   end
 
