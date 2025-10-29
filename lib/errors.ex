@@ -75,7 +75,7 @@ defmodule Errors do
   (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`). If the function returns
   any other value, it wraps it in `{:ok, value}`.
 
-  This is the "unsafe" version that doesn't catch exceptions. Use `step/1` for
+  This is the "unsafe" version that doesn't catch exceptions. Use `then/1` for
   exception handling.
 
   ## Parameters
@@ -84,13 +84,13 @@ defmodule Errors do
 
   ## Examples
 
-      iex> step!(fn -> {:ok, 42} end)
+      iex> then!(fn -> {:ok, 42} end)
       {:ok, 42}
 
-      iex> step!(fn -> {:error, :not_found} end)
+      iex> then!(fn -> {:error, :not_found} end)
       {:error, :not_found}
   """
-  def step!(func) do
+  def then!(func) do
     case func.() do
       :ok -> :ok
       {:ok, _} = result -> result
@@ -103,11 +103,11 @@ defmodule Errors do
   @doc """
   Executes a function with a previous result value, without exception handling.
 
-  Takes a result from a previous step and, if successful, passes the unwrapped value
+  Takes a result from a previous then and, if successful, passes the unwrapped value
   to the provided function. If the previous result was an error, short-circuits and
   returns the error without calling the function.
 
-  This is the "unsafe" version that doesn't catch exceptions. Use `step/2` for
+  This is the "unsafe" version that doesn't catch exceptions. Use `then/2` for
   exception handling.
 
   ## Parameters
@@ -117,13 +117,13 @@ defmodule Errors do
 
   ## Examples
 
-      iex> step!({:ok, 5}, fn x -> {:ok, x * 2} end)
+      iex> then!({:ok, 5}, fn x -> {:ok, x * 2} end)
       {:ok, 10}
 
-      iex> step!({:error, :not_found}, fn x -> {:ok, x * 2} end)
+      iex> then!({:error, :not_found}, fn x -> {:ok, x * 2} end)
       {:error, :not_found}
   """
-  def step!(:ok, func) do
+  def then!(:ok, func) do
     case func.(nil) do
       :ok -> :ok
       {:ok, _} = result -> result
@@ -133,7 +133,7 @@ defmodule Errors do
     end
   end
 
-  def step!({:ok, value}, func) do
+  def then!({:ok, value}, func) do
     case func.(value) do
       :ok -> :ok
       {:ok, _} = result -> result
@@ -143,10 +143,10 @@ defmodule Errors do
     end
   end
 
-  def step!(:error, _func), do: :error
+  def then!(:error, _func), do: :error
 
-  def step!({:error, _} = result, _func), do: result
-  def step!(other, _), do: validate_result!(other)
+  def then!({:error, _} = result, _func), do: result
+  def then!(other, _), do: validate_result!(other)
 
   @doc """
   Executes a function that returns a result tuple, with exception handling.
@@ -161,15 +161,15 @@ defmodule Errors do
 
   ## Examples
 
-      iex> step(fn -> {:ok, 42} end)
+      iex> then(fn -> {:ok, 42} end)
       {:ok, 42}
 
-      iex> step(fn -> raise "boom" end)
+      iex> then(fn -> raise "boom" end)
       {:error, %Errors.WrappedError{}}
   """
-  def step(func) do
+  def then(func) do
     try do
-      step!(func)
+      then!(func)
     rescue
       exception ->
         {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
@@ -179,7 +179,7 @@ defmodule Errors do
   @doc """
   Executes a function with a previous result value, with exception handling.
 
-  Takes a result from a previous step and, if successful, passes the unwrapped value
+  Takes a result from a previous then and, if successful, passes the unwrapped value
   to the provided function. If the previous result was an error, short-circuits and
   returns the error. If the function raises an exception, it catches it and returns
   `{:error, %Errors.WrappedError{}}` with details about the exception.
@@ -191,16 +191,15 @@ defmodule Errors do
 
   ## Examples
 
-      iex> step({:ok, 5}, fn x -> {:ok, x * 2} end)
+      iex> then({:ok, 5}, fn x -> {:ok, x * 2} end)
       {:ok, 10}
 
-      iex> step({:ok, 5}, fn _x -> raise "boom" end)
+      iex> then({:ok, 5}, fn _x -> raise "boom" end)
       {:error, %Errors.WrappedError{}}
   """
-  def step(result, func) do
-    # telemetry_step_span(func, input, context, fn ->
+  def then(result, func) do
     try do
-      step!(result, func)
+      then!(result, func)
     rescue
       exception ->
         {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
@@ -210,7 +209,7 @@ defmodule Errors do
   def map!(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map!/2")
 
   def map!({:ok, enumerable}, func) do
-    Enum.map(enumerable, &step!({:ok, &1}, func))
+    Enum.map(enumerable, &then!({:ok, &1}, func))
   end
 
   def map!(:error, _), do: :error
@@ -224,7 +223,7 @@ defmodule Errors do
   def map(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map/2")
 
   def map({:ok, enumerable}, func) do
-    Enum.map(enumerable, &step({:ok, &1}, func))
+    Enum.map(enumerable, &Errors.then({:ok, &1}, func))
   end
 
   def map(:error, _), do: :error

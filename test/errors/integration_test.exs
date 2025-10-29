@@ -14,10 +14,10 @@ defmodule Errors.IntegrationTest do
     :ok
   end
 
-  describe "step!/1 with wrap_context" do
+  describe "then!/1 with wrap_context" do
     test "wraps error with context" do
       result =
-        Errors.step!(fn -> {:error, "database connection failed"} end)
+        Errors.then!(fn -> {:error, "database connection failed"} end)
         |> Errors.wrap_context("Fetching user")
 
       assert {:error, %Errors.WrappedError{} = wrapped_error} = result
@@ -26,11 +26,11 @@ defmodule Errors.IntegrationTest do
       assert wrapped_error.result == {:error, "database connection failed"}
     end
 
-    test "wraps error in multi-step chain" do
+    test "wraps error in multi-then chain" do
       result =
-        Errors.step!(fn -> {:ok, 10} end)
-        |> Errors.step!(fn _ -> {:error, "calculation failed"} end)
-        |> Errors.step!(fn _ -> raise "Should not be called" end)
+        Errors.then!(fn -> {:ok, 10} end)
+        |> Errors.then!(fn _ -> {:error, "calculation failed"} end)
+        |> Errors.then!(fn _ -> raise "Should not be called" end)
         |> Errors.wrap_context("Final calculation")
 
       assert {:error, %Errors.WrappedError{} = wrapped_error} = result
@@ -40,11 +40,11 @@ defmodule Errors.IntegrationTest do
     end
   end
 
-  describe "step!/2 with wrap_context" do
+  describe "then!/2 with wrap_context" do
     test "wraps error with context" do
       result =
         {:error, "user not found"}
-        |> Errors.step!(fn _ -> raise "Should not be called" end)
+        |> Errors.then!(fn _ -> raise "Should not be called" end)
         |> Errors.wrap_context("Fetching user")
 
       assert {:error, %Errors.WrappedError{} = wrapped_error} = result
@@ -56,9 +56,9 @@ defmodule Errors.IntegrationTest do
     test "chains multiple wrap_context calls" do
       result =
         {:ok, "user@example.com"}
-        |> Errors.step!(fn email -> {:error, "invalid email: #{email}"} end)
+        |> Errors.then!(fn email -> {:error, "invalid email: #{email}"} end)
         |> Errors.wrap_context("first")
-        |> Errors.step!(fn _ -> raise "Should not be called" end)
+        |> Errors.then!(fn _ -> raise "Should not be called" end)
         |> Errors.wrap_context("second")
 
       assert {:error, %Errors.WrappedError{} = wrapped_error} = result
@@ -72,13 +72,13 @@ defmodule Errors.IntegrationTest do
     end
   end
 
-  describe "step/2 with wrap_context" do
+  describe "then/2 with wrap_context" do
     test "wraps caught exception with context" do
       func = fn _ -> raise ArgumentError, "invalid value" end
 
       result =
         {:ok, 10}
-        |> Errors.step(func)
+        |> Errors.then(func)
         |> Errors.wrap_context("Processing payment")
 
       assert {:error, %Errors.WrappedError{} = wrapped_error} = result
@@ -90,7 +90,7 @@ defmodule Errors.IntegrationTest do
       assert second_wrapped_error.metadata == %{}
 
       assert {Errors.IntegrationTest,
-              :"-test step/2 with wrap_context wraps caught exception with context/1-fun-0-", _,
+              :"-test then/2 with wrap_context wraps caught exception with context/1-fun-0-", _,
               [file: ~c"test/errors/integration_test.exs", line: _]} =
                List.first(second_wrapped_error.stacktrace)
 
@@ -101,7 +101,7 @@ defmodule Errors.IntegrationTest do
     test "wraps error with context" do
       result =
         {:error, "user not found"}
-        |> Errors.step(fn _ -> raise "Should not be called" end)
+        |> Errors.then(fn _ -> raise "Should not be called" end)
         |> Errors.wrap_context("Fetching user")
 
       assert {:error, %Errors.WrappedError{} = wrapped_error} = result
@@ -113,9 +113,9 @@ defmodule Errors.IntegrationTest do
     test "chains multiple wrap_context calls" do
       result =
         {:ok, "user@example.com"}
-        |> Errors.step(fn email -> {:error, "invalid email: #{email}"} end)
+        |> Errors.then(fn email -> {:error, "invalid email: #{email}"} end)
         |> Errors.wrap_context("first")
-        |> Errors.step(fn _ -> raise "Should not be called" end)
+        |> Errors.then(fn _ -> raise "Should not be called" end)
         |> Errors.wrap_context("second")
 
       assert {:error, %Errors.WrappedError{} = wrapped_error} = result
@@ -134,7 +134,7 @@ defmodule Errors.IntegrationTest do
       log =
         capture_log([level: :error], fn ->
           result =
-            Errors.step!(fn -> {:error, "database timeout"} end)
+            Errors.then!(fn -> {:error, "database timeout"} end)
             |> Errors.wrap_context("Fetching user data")
             |> Errors.log()
 
@@ -146,12 +146,12 @@ defmodule Errors.IntegrationTest do
     \[CONTEXT\] test/errors/integration_test\.exs:\d+: Fetching user data>
     end
 
-    test "logs nested wrapped errors from step/2 exception" do
+    test "logs nested wrapped errors from then/2 exception" do
       log =
         capture_log([level: :error], fn ->
           result =
             {:ok, 100}
-            |> Errors.step(&Errors.TestHelper.raise_argument_error/1)
+            |> Errors.then(&Errors.TestHelper.raise_argument_error/1)
             |> Errors.wrap_context("Processing payment")
             |> Errors.log()
 
@@ -169,7 +169,7 @@ defmodule Errors.IntegrationTest do
         capture_log([level: :error], fn ->
           result =
             {:ok, "test@example.com"}
-            |> Errors.step!(fn email -> {:error, "invalid domain for #{email}"} end)
+            |> Errors.then!(fn email -> {:error, "invalid domain for #{email}"} end)
             |> Errors.wrap_context("Validating email")
             |> Errors.wrap_context("User registration")
             |> Errors.wrap_context("API endpoint: /users")
@@ -205,14 +205,14 @@ defmodule Errors.IntegrationTest do
       assert log =~ ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: {:ok, 42}>
     end
 
-    test "logs step/2 chain with exception and wrap_context" do
+    test "logs then/2 chain with exception and wrap_context" do
       log =
         capture_log([level: :error], fn ->
           result =
             {:ok, 5}
-            |> Errors.step(fn x -> x * 2 end)
-            |> Errors.step(fn x -> x + 3 end)
-            |> Errors.step(fn _ -> raise RuntimeError, "unexpected failure" end)
+            |> Errors.then(fn x -> x * 2 end)
+            |> Errors.then(fn x -> x + 3 end)
+            |> Errors.then(fn _ -> raise RuntimeError, "unexpected failure" end)
             |> Errors.wrap_context("Data processing pipeline")
             |> Errors.log()
 
@@ -222,7 +222,7 @@ defmodule Errors.IntegrationTest do
       assert log =~
                ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: \*\* \(RuntimeError\) unexpected failure
     \[CONTEXT\] test/errors/integration_test\.exs:\d+: Data processing pipeline
-    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Errors\.IntegrationTest\.-test log with wrapped errors logs step/2 chain with exception and wrap_context/1-fun-0-/1>
+    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Errors\.IntegrationTest\.-test log with wrapped errors logs then/2 chain with exception and wrap_context/1-fun-0-/1>
     end
   end
 
@@ -231,7 +231,7 @@ defmodule Errors.IntegrationTest do
   #     capture_log([level: :error], fn ->
   #       {:ok, "123u"}
   #       # Raises if not a valid integer
-  #       |> Errors.step(&String.to_integer/1)
+  #       |> Errors.then(&String.to_integer/1)
   #       |> Errors.log()
   #     end)
   #
@@ -248,7 +248,7 @@ defmodule Errors.IntegrationTest do
   #     capture_log([level: :error], fn ->
   #       {:ok, "123u"}
   #       # Raises if not a valid integer
-  #       |> Errors.step(&String.to_integer/1)
+  #       |> Errors.then(&String.to_integer/1)
   #       |> Errors.log()
   #     end)
   #
