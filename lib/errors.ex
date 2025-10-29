@@ -206,6 +206,27 @@ defmodule Errors do
     end
   end
 
+  def handle(:error, func), do: handle({:error, nil}, func)
+
+  def handle({:error, reason}, func) do
+    case func.(reason) do
+      :ok ->
+        :ok
+
+      {:ok, _} = result ->
+        result
+
+      other ->
+        {:error, other}
+    end
+  end
+
+  def handle(result, func) do
+    validate_result!(result)
+
+    result
+  end
+
   def map!(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map!/2")
 
   def map!({:ok, enumerable}, func) do
