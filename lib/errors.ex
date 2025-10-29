@@ -255,6 +255,27 @@ defmodule Errors do
           "Argument must be {:ok, _} / {:error, _} / :error, got: #{inspect(result)}"
   end
 
+  def find_value({:ok, input}, func), do: find_value(input, func)
+  def find_value(:error, _), do: :error
+  def find_value({:error, _} = error, _), do: error
+
+  def find_value(input, func) do
+    errors =
+      Enum.map(input, fn value ->
+        case func.(value) do
+          :ok -> throw(:ok)
+          {:ok, _} = result -> throw(result)
+          :error -> nil
+          {:error, reason} -> reason
+        end
+      end)
+
+    {:error, errors}
+  catch
+    value ->
+      value
+  end
+
   # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
   #
   # def telemetry(:ok, name), do: telemetry({:ok, nil}, name)
