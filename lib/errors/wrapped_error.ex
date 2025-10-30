@@ -182,3 +182,23 @@ defimpl Jason.Encoder, for: Errors.WrappedError do
 end
 
 # end
+
+defimpl Inspect, for: Errors.WrappedError do
+  import Inspect.Algebra
+
+  def inspect(wrapped_error, opts) do
+    errors = Errors.WrappedError.unwrap(wrapped_error)
+
+    contexts_doc =
+      errors
+      |> Enum.map(&(&1.context || inspect(&1.metadata)))
+      |> Enum.intersperse(" => ")
+      |> concat()
+
+    message = Errors.result_details(List.last(errors).result).message
+
+    # {doc, opts} = to_doc_with_opts(MapSet.to_list(map_set), opts)
+
+    {concat(["Errors.WrappedError<<", contexts_doc, " | ", message, ">>"]), opts}
+  end
+end
