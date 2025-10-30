@@ -3,7 +3,7 @@ defmodule Errors.FindValueTest do
 
   describe "find_value/2" do
     test "returns error for non-enumerable" do
-      func = fn i -> flunk("This shouldn't run") end
+      func = fn _ -> flunk("This shouldn't run") end
 
       assert_raise Protocol.UndefinedError, ~r/protocol Enumerable not implemented/, fn ->
         Errors.find_value(123, func)
@@ -50,11 +50,23 @@ defmodule Errors.FindValueTest do
       assert Errors.find_value(1..3, func) == {:error, [:below_five, :below_five, :below_five]}
     end
 
-    test "doesn't do anything when given an error" do
-      func = fn i -> flunk("This shouldn't run") end
+    test "exception raised" do
+      func = fn _ -> raise "The test's error" end
 
-      Errors.find_value({:error, :very_specific}, func) == {:error, :very_specific}
-      Errors.find_value(:error, func) == :error
+      assert_raise RuntimeError, "The test's error", fn -> Errors.find_value(1..4, func) end
+    end
+
+    test "throw" do
+      func = fn _ -> throw(:the_thrown_value) end
+
+      assert catch_throw(Errors.find_value(1..4, func)) == :the_thrown_value
+    end
+
+    test "doesn't do anything when given an error" do
+      func = fn _ -> flunk("This shouldn't run") end
+
+      assert Errors.find_value({:error, :very_specific}, func) == {:error, :very_specific}
+      assert Errors.find_value(:error, func) == :error
     end
   end
 end

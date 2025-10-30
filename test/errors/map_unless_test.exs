@@ -3,7 +3,7 @@ defmodule Errors.MapUnlessTest do
 
   describe "map_unless/2" do
     test "returns error for non-enumerable" do
-      func = fn i -> flunk("This shouldn't run") end
+      func = fn _ -> flunk("This shouldn't run") end
 
       assert_raise Protocol.UndefinedError, ~r/protocol Enumerable not implemented/, fn ->
         Errors.map_unless(123, func)
@@ -45,13 +45,25 @@ defmodule Errors.MapUnlessTest do
       assert Errors.map_unless({:ok, 1..10}, func) == :error
     end
 
+    test "exception raised" do
+      func = fn _ -> raise "The test's error" end
+
+      assert_raise RuntimeError, "The test's error", fn -> Errors.map_unless(1..4, func) end
+    end
+
+    test "throw" do
+      func = fn _ -> throw(:the_thrown_value) end
+
+      assert catch_throw(Errors.map_unless(1..4, func)) == :the_thrown_value
+    end
+
     test "doesn't do anything when given an error" do
-      func = fn i -> flunk("This shouldn't run") end
+      func = fn _ -> flunk("This shouldn't run") end
 
-      Errors.map_unless({:error, :very_specific}, func) ==
-        {:error, :very_specific}
+      assert Errors.map_unless({:error, :very_specific}, func) ==
+               {:error, :very_specific}
 
-      Errors.map_unless(:error, func) == :error
+      assert Errors.map_unless(:error, func) == :error
     end
   end
 end

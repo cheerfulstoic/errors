@@ -221,7 +221,7 @@ defmodule Errors do
     end
   end
 
-  def handle(result, func) do
+  def handle(result, _) do
     validate_result!(result)
 
     result
@@ -268,14 +268,14 @@ defmodule Errors do
            value
 
          :error ->
-           throw(:error)
+           throw({:__ERRORS__, :error})
 
          {:error, _} = error ->
-           throw(error)
+           throw({:__ERRORS__, error})
        end
      end)}
   catch
-    result ->
+    {:__ERRORS__, result} ->
       result
   end
 
@@ -287,8 +287,8 @@ defmodule Errors do
     errors =
       Enum.map(input, fn value ->
         case func.(value) do
-          :ok -> throw(:ok)
-          {:ok, _} = result -> throw(result)
+          :ok -> throw({:__ERRORS__, :ok})
+          {:ok, _} = result -> throw({:__ERRORS__, result})
           :error -> nil
           {:error, reason} -> reason
         end
@@ -296,8 +296,39 @@ defmodule Errors do
 
     {:error, errors}
   catch
-    result ->
+    {:__ERRORS__, result} ->
       result
+  end
+
+  def all({:ok, input}, func), do: all(input, func)
+  def all(:error, _), do: :error
+  def all({:error, _} = error, _), do: error
+
+  def all(input, func) do
+    for value <- input do
+      case func.(value) do
+        :ok ->
+          nil
+
+        {:ok, _} ->
+          nil
+
+        :error ->
+          throw({:__ERRORS__, :error})
+
+        {:error, _} = error ->
+          throw({:__ERRORS__, error})
+
+        other ->
+          validate_result!(other, "Callback return")
+      end
+    end
+
+    :ok
+  catch
+    # Wrapping throw so that callback throws will not be caught by us
+    {:__ERRORS__, error} ->
+      error
   end
 
   # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
@@ -566,8 +597,8 @@ defmodule Errors do
   defp validate_result!({:ok, _}), do: nil
   defp validate_result!({:error, _}), do: nil
 
-  defp validate_result!(result) do
+  defp validate_result!(result, label \\ "Argument") do
     raise ArgumentError,
-          "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: #{inspect(result)}"
+          "#{label} must be {:ok, _} / :ok / {:error, _} / :error, got: #{inspect(result)}"
   end
 end
