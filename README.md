@@ -9,8 +9,12 @@ This package provides three levels of working with errors which are all **usable
 - **Context Wrapping**: Add meaningful context to errors as they bubble up through your application
 - **Result Logging**: Log errors (and optionally successes) with file/line information
 - **User-friendly errors**: Be able to collapse errors into a single user error message
+- **Error control flow**: `then` and `handle` functions help control and transform results
+- **Error enumeration**: functions like `map_unless`, `find_value`, and `all` help deal with enumerations over data where each iteration may succeed or fail.
 
 The design goal was to use standard return results and standard tools like Elixir Exception structs so that you never end up with anything out of the ordinary.
+
+Make sure to see [the HexDocs](https://hexdocs.pm/triage/) for function descriptions, example use-cases, and the design philosophy.
 
 ## Installation
 
