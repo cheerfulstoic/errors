@@ -45,7 +45,7 @@ defmodule Triage.MixProject do
         # "guides/introduction/Getting Started.md",
         "guides/introduction/Contexts.md",
         "guides/introduction/Control Flow.md",
-        "guides/introduction/Enumerating Triage.md",
+        "guides/introduction/Enumerating Errors.md",
         "guides/introduction/Comparison to with.md",
         "guides/examples/find_working_url.md",
         "CHANGELOG.md"
