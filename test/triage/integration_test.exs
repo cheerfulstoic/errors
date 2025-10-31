@@ -91,7 +91,7 @@ defmodule Triage.IntegrationTest do
 
       assert {Triage.IntegrationTest,
               :"-test then/2 with wrap_context wraps caught exception with context/1-fun-0-", _,
-              [file: ~c"test/errors/integration_test.exs", line: _]} =
+              [file: ~c"test/triage/integration_test.exs", line: _]} =
                List.first(second_wrapped_error.stacktrace)
 
       assert %ArgumentError{message: "invalid value"} = second_wrapped_error.result
@@ -142,8 +142,8 @@ defmodule Triage.IntegrationTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: {:error, "database timeout"}
-    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Fetching user data>
+               ~r<\[RESULT\] test/triage/integration_test\.exs:\d+: {:error, "database timeout"}
+    \[CONTEXT\] test/triage/integration_test\.exs:\d+: Fetching user data>
     end
 
     test "logs nested wrapped errors from then/2 exception" do
@@ -159,9 +159,9 @@ defmodule Triage.IntegrationTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: \*\* \(ArgumentError\) amount too high
-    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Processing payment
-    \[CONTEXT\] lib/errors/test_helper.ex:\d+: Triage\.TestHelper\.raise_argument_error/1>
+               ~r<\[RESULT\] test/triage/integration_test\.exs:\d+: \*\* \(ArgumentError\) amount too high
+    \[CONTEXT\] test/triage/integration_test\.exs:\d+: Processing payment
+    \[CONTEXT\] lib/triage/test_helper.ex:\d+: Triage\.TestHelper\.raise_argument_error/1>
     end
 
     test "logs deeply nested contexts" do
@@ -179,10 +179,10 @@ defmodule Triage.IntegrationTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: {:error, "invalid domain for test@example.com"}
-    \[CONTEXT\] test/errors/integration_test\.exs:\d+: API endpoint: /users
-    \[CONTEXT\] test/errors/integration_test\.exs:\d+: User registration
-    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Validating email>
+               ~r<\[RESULT\] test/triage/integration_test\.exs:\d+: {:error, "invalid domain for test@example.com"}
+    \[CONTEXT\] test/triage/integration_test\.exs:\d+: API endpoint: /users
+    \[CONTEXT\] test/triage/integration_test\.exs:\d+: User registration
+    \[CONTEXT\] test/triage/integration_test\.exs:\d+: Validating email>
     end
 
     test "does not log successes with :errors mode" do
@@ -202,7 +202,7 @@ defmodule Triage.IntegrationTest do
           assert result == {:ok, 42}
         end)
 
-      assert log =~ ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: {:ok, 42}>
+      assert log =~ ~r<\[RESULT\] test/triage/integration_test\.exs:\d+: {:ok, 42}>
     end
 
     test "logs then/2 chain with exception and wrap_context" do
@@ -220,9 +220,9 @@ defmodule Triage.IntegrationTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: \*\* \(RuntimeError\) unexpected failure
-    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Data processing pipeline
-    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Triage\.IntegrationTest\.-test log with wrapped errors logs then/2 chain with exception and wrap_context/1-fun-0-/1>
+               ~r<\[RESULT\] test/triage/integration_test\.exs:\d+: \*\* \(RuntimeError\) unexpected failure
+    \[CONTEXT\] test/triage/integration_test\.exs:\d+: Data processing pipeline
+    \[CONTEXT\] test/triage/integration_test\.exs:\d+: Triage\.IntegrationTest\.-test log with wrapped errors logs then/2 chain with exception and wrap_context/1-fun-0-/1>
     end
   end
 

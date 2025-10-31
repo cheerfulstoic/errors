@@ -24,12 +24,12 @@ defmodule Triage.LogTest do
   end
 
   setup do
-    Application.delete_env(:errors, :app)
-    Application.delete_env(:errors, :log_adapter)
+    Application.delete_env(:triage, :app)
+    Application.delete_env(:triage, :log_adapter)
 
     on_exit(fn ->
-      Application.delete_env(:errors, :app)
-      Application.delete_env(:errors, :log_adapter)
+      Application.delete_env(:triage, :app)
+      Application.delete_env(:triage, :log_adapter)
     end)
 
     :ok
@@ -61,7 +61,7 @@ defmodule Triage.LogTest do
           assert result == :error
         end)
 
-      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: :error>
+      assert log =~ ~r<\[RESULT\] test/triage/log_test\.exs:\d+: :error>
     end
 
     test "logs and passes through {:error, binary}" do
@@ -72,7 +72,7 @@ defmodule Triage.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, \"something went wrong\"}>
+               ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:error, \"something went wrong\"}>
     end
 
     test "logs and passes through {:error, atom}" do
@@ -82,7 +82,7 @@ defmodule Triage.LogTest do
           assert result == {:error, :timeout}
         end)
 
-      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, :timeout}>
+      assert log =~ ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:error, :timeout}>
     end
 
     test "logs and passes through {:error, exception}" do
@@ -95,14 +95,14 @@ defmodule Triage.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, #RuntimeError\<\.\.\.\>} \(message: an example error message\)>
+               ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:error, #RuntimeError\<\.\.\.\>} \(message: an example error message\)>
     end
 
     test "logs and passes through {:error, %Triage.WrappedError{}}" do
       exception =
         Triage.WrappedError.new({:error, :failed}, "fooing the bar", [
           # Made up stacktrace line using a real module so we get a realistic-ish line/number
-          {Triage.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
+          {Triage.TestHelper, :run_log, 2, [file: ~c"lib/triage/test_helper.ex", line: 10]}
         ])
 
       log =
@@ -112,8 +112,8 @@ defmodule Triage.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, :failed}
-    \[CONTEXT\] lib/errors/test_helper.ex:10: fooing the bar>
+               ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:error, :failed}
+    \[CONTEXT\] lib/triage/test_helper.ex:10: fooing the bar>
     end
 
     test "WrappedError with nil context" do
@@ -123,7 +123,7 @@ defmodule Triage.LogTest do
           nil,
           [
             # Made up stacktrace line using a real module so we get a realistic-ish line/number
-            {Triage.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
+            {Triage.TestHelper, :run_log, 2, [file: ~c"lib/triage/test_helper.ex", line: 10]}
           ],
           %{foo: 123, bar: "baz"}
         )
@@ -135,8 +135,8 @@ defmodule Triage.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, :failed}
-    \[CONTEXT\] lib/errors/test_helper.ex:10: %{bar: \"baz\", foo: 123}>
+               ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:error, :failed}
+    \[CONTEXT\] lib/triage/test_helper.ex:10: %{bar: \"baz\", foo: 123}>
     end
 
     test "WrappedError with raised exception" do
@@ -149,7 +149,7 @@ defmodule Triage.LogTest do
           func,
           [
             # Made up stacktrace line using a real module so we get a realistic-ish line/number
-            {Triage.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
+            {Triage.TestHelper, :run_log, 2, [file: ~c"lib/triage/test_helper.ex", line: 10]}
           ]
         )
 
@@ -160,8 +160,8 @@ defmodule Triage.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: \*\* \(RuntimeError\) an example error message
-    \[CONTEXT\] lib/errors/test_helper.ex:10: Triage\.LogTest\.-test>
+               ~r<\[RESULT\] test/triage/log_test\.exs:\d+: \*\* \(RuntimeError\) an example error message
+    \[CONTEXT\] lib/triage/test_helper.ex:10: Triage\.LogTest\.-test>
     end
 
     test "Nested WrappedError" do
@@ -174,13 +174,13 @@ defmodule Triage.LogTest do
              "lower down",
              [
                {Triage.TestHelper, :made_up_function, 0,
-                [file: ~c"lib/errors/test_helper.ex", line: 18]}
+                [file: ~c"lib/triage/test_helper.ex", line: 18]}
              ],
              %{a: 123, b: "baz"}
            )},
           "higher up",
           [
-            {Triage.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
+            {Triage.TestHelper, :run_log, 2, [file: ~c"lib/triage/test_helper.ex", line: 10]}
           ],
           %{b: "biz", something: %{whatever: :hello}, c: :foo}
         )
@@ -192,9 +192,9 @@ defmodule Triage.LogTest do
         end)
 
       assert log =~
-               ~r<a=123 b=baz c=foo \[error\] \[RESULT\] test/errors/log_test\.exs:\d+: {:error, #RuntimeError\<\.\.\.\>} \(message: an example error message\)
-    \[CONTEXT\] lib/errors/test_helper.ex:10: higher up %{b: "biz", c: :foo, something: %{whatever: :hello}}
-    \[CONTEXT\] lib/errors/test_helper.ex:18: lower down %{a: 123, b: "baz"}>
+               ~r<a=123 b=baz c=foo \[error\] \[RESULT\] test/triage/log_test\.exs:\d+: {:error, #RuntimeError\<\.\.\.\>} \(message: an example error message\)
+    \[CONTEXT\] lib/triage/test_helper.ex:10: higher up %{b: "biz", c: :foo, something: %{whatever: :hello}}
+    \[CONTEXT\] lib/triage/test_helper.ex:18: lower down %{a: 123, b: "baz"}>
     end
 
     test "does not log :ok atom" do
@@ -234,7 +234,7 @@ defmodule Triage.LogTest do
           assert result == :error
         end)
 
-      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: :error>
+      assert log =~ ~r<\[RESULT\] test/triage/log_test\.exs:\d+: :error>
     end
 
     test "logs {:error, binary}" do
@@ -245,7 +245,7 @@ defmodule Triage.LogTest do
         end)
 
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, "something went wrong"}>
+               ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:error, "something went wrong"}>
     end
 
     test "logs Ecto.Changeset error" do
@@ -267,7 +267,7 @@ defmodule Triage.LogTest do
 
       # Uses Ecto's `inspect` implementation
       assert log =~
-               ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:error, #Ecto\.Changeset\<action: :insert, changes: %{}, data: #Triage\.LogTest\.User\<id: nil, name: nil, \.\.\.\>, errors: \[name: {"is invalid", \[type: :string, validation: :cast\]}\], params: %{"name" =\> 1}, valid\?: false, \.\.\.\>}>
+               ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:error, #Ecto\.Changeset\<action: :insert, changes: %{}, data: #Triage\.LogTest\.User\<id: nil, name: nil, \.\.\.\>, errors: \[name: {"is invalid", \[type: :string, validation: :cast\]}\], params: %{"name" =\> 1}, valid\?: false, \.\.\.\>}>
     end
 
     test "logs custom struct" do
@@ -307,7 +307,7 @@ defmodule Triage.LogTest do
           assert result == :ok
         end)
 
-      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: :ok>
+      assert log =~ ~r<\[RESULT\] test/triage/log_test\.exs:\d+: :ok>
     end
 
     test "logs {:ok, value}" do
@@ -317,7 +317,7 @@ defmodule Triage.LogTest do
           assert result == {:ok, "success"}
         end)
 
-      assert log =~ ~r<\[RESULT\] test/errors/log_test\.exs:\d+: {:ok, \"success\"}>
+      assert log =~ ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:ok, \"success\"}>
     end
 
     test "logs nested custom structs in ok tuples" do
@@ -342,14 +342,14 @@ defmodule Triage.LogTest do
   describe "Triage.log/2 log levels" do
     # :error results
     test "{:error, _} logs at level: :error - shows app line if app configured" do
-      Application.put_env(:errors, :app, :errors)
+      Application.put_env(:triage, :app, :triage)
 
       log =
         capture_log([level: :error], fn ->
           {:error, "test"} |> Triage.TestHelper.run_log(:errors)
         end)
 
-      assert log =~ ~r<\[RESULT\] lib/errors/test_helper\.ex:\d+: {:error, "test"}>
+      assert log =~ ~r<\[RESULT\] lib/triage/test_helper\.ex:\d+: {:error, "test"}>
 
       # Should not appear at warning level
       log =
@@ -371,14 +371,14 @@ defmodule Triage.LogTest do
     end
 
     test ":error logs at level: :error" do
-      Application.put_env(:errors, :app, :errors)
+      Application.put_env(:triage, :app, :triage)
 
       log =
         capture_log([level: :error], fn ->
           :error |> Triage.TestHelper.run_log(:errors)
         end)
 
-      assert log =~ ~r<\[RESULT\] lib/errors/test_helper\.ex:\d+: :error>
+      assert log =~ ~r<\[RESULT\] lib/triage/test_helper\.ex:\d+: :error>
 
       # Should not appear at warning level
       log =
@@ -390,7 +390,7 @@ defmodule Triage.LogTest do
     end
 
     test "app configured, but :error result occurs where stacktrace does not have app" do
-      Application.put_env(:errors, :app, :errors)
+      Application.put_env(:triage, :app, :triage)
 
       log =
         capture_log([level: :error], fn ->
@@ -402,14 +402,14 @@ defmodule Triage.LogTest do
 
     # :ok results
     test "{:ok, _} logs at level: :info - shows app line if app configured" do
-      Application.put_env(:errors, :app, :errors)
+      Application.put_env(:triage, :app, :triage)
 
       log =
         capture_log([level: :info], fn ->
           {:ok, "test"} |> Triage.TestHelper.run_log(:all)
         end)
 
-      assert log =~ ~r<\[RESULT\] lib/errors/test_helper\.ex:9: {:ok, "test"}>
+      assert log =~ ~r<\[RESULT\] lib/triage/test_helper\.ex:9: {:ok, "test"}>
 
       # Should not appear at warning level
       log =
@@ -431,14 +431,14 @@ defmodule Triage.LogTest do
     end
 
     test ":ok logs at level: :info" do
-      Application.put_env(:errors, :app, :errors)
+      Application.put_env(:triage, :app, :triage)
 
       log =
         capture_log([level: :info], fn ->
           :ok |> Triage.TestHelper.run_log(:all)
         end)
 
-      assert log =~ ~r<\[RESULT\] lib/errors/test_helper\.ex:9: :ok>
+      assert log =~ ~r<\[RESULT\] lib/triage/test_helper\.ex:9: :ok>
 
       # Should not appear at warning level
       log =
@@ -450,7 +450,7 @@ defmodule Triage.LogTest do
     end
 
     test "app configured, but :ok result occurs where stacktrace does not have app" do
-      Application.put_env(:errors, :app, :errors)
+      Application.put_env(:triage, :app, :triage)
 
       log =
         capture_log([level: :info], fn ->

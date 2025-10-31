@@ -144,7 +144,7 @@ defmodule Triage.ThenTest do
         Triage.then(fn -> raise "boom" end)
 
       assert wrapped_error.message =~
-               ~r<\*\* \(RuntimeError\) boom\n    \[CONTEXT\] test/errors/then_test\.exs:\d+: Triage\.ThenTest\.-test then/1 An exception is raised/1-fun-0-/1>
+               ~r<\*\* \(RuntimeError\) boom\n    \[CONTEXT\] test/triage/then_test\.exs:\d+: Triage\.ThenTest\.-test then/1 An exception is raised/1-fun-0-/1>
 
       assert wrapped_error.reason == %RuntimeError{message: "boom"}
     end
