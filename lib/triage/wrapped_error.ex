@@ -16,6 +16,8 @@ defmodule Triage.WrappedError do
 
   alias Triage.Stacktrace
 
+  @type t() :: %__MODULE__{}
+
   @enforce_keys [:result, :reason]
   defexception [:result, :reason, :context, :stacktrace, :metadata, :message]
 

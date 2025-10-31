@@ -8,19 +8,21 @@ defmodule Triage do
   require Logger
   require Stacktrace
 
+  @type result() :: :ok | :error | {:ok, term()} | {:error, term()}
+
   @doc """
-  Wraps error results with additional context information, leaving successful results unchanged.
+  Wraps `t:result/0` with additional context information, leaving `:ok` results unchanged.
 
   Takes a result tuple and wraps error cases (`:error` or `{:error, reason}`) with
-  context information and metadata, returning `{:error, %Triage.WrappedError{}}`. Success
-  cases (`:ok` or `{:ok, value}`) are passed through unchanged.
+  a context string, metadata, and stacktrace info contained in `Triage.WrappedError{}`.
 
-  ## Parameters
-
-    * `result` - The result to potentially wrap (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`)
-    * `context` - Either a string describing the context or a map/keyword list of metadata
+  If the second argument is a string, the context is set. If the second argument is a
+  keyword list or a map the metadata is set.  The arity 3 version allows setting both.
 
   ## Examples
+
+      iex> Triage.wrap_context(:ok, "fetching user")
+      :ok
 
       iex> Triage.wrap_context({:ok, 42}, "fetching user")
       {:ok, 42}
@@ -34,6 +36,10 @@ defmodule Triage do
       iex> Triage.wrap_context({:error, :not_found}, %{user_id: 123})
       {:error, %Triage.WrappedError{}}
   """
+  @spec wrap_context(result(), String.t() | map()) ::
+          :ok | {:ok, term()} | {:error, Triage.WrappedError.t()}
+  @spec wrap_context(result(), map(), keyword() | map()) ::
+          :ok | {:ok, term()} | {:error, Triage.WrappedError.t()}
   def wrap_context(:ok, _meta), do: :ok
 
   def wrap_context({:ok, result}, _meta) do
@@ -90,6 +96,7 @@ defmodule Triage do
       iex> then!(fn -> {:error, :not_found} end)
       {:error, :not_found}
   """
+  @spec then!((term() -> term())) :: result()
   def then!(func) do
     case func.() do
       :ok -> :ok
@@ -123,6 +130,7 @@ defmodule Triage do
       iex> then!({:error, :not_found}, fn x -> {:ok, x * 2} end)
       {:error, :not_found}
   """
+  @spec then!(result(), (term() -> term())) :: result()
   def then!(:ok, func) do
     case func.(nil) do
       :ok -> :ok
@@ -167,6 +175,7 @@ defmodule Triage do
       iex> then(fn -> raise "boom" end)
       {:error, %Triage.WrappedError{}}
   """
+  @spec then((term() -> term())) :: result()
   def then(func) do
     try do
       then!(func)
@@ -197,6 +206,7 @@ defmodule Triage do
       iex> then({:ok, 5}, fn _x -> raise "boom" end)
       {:error, %Triage.WrappedError{}}
   """
+  @spec then(result(), (term() -> term())) :: result()
   def then(result, func) do
     try do
       then!(result, func)
@@ -206,6 +216,36 @@ defmodule Triage do
     end
   end
 
+  @doc """
+  For dealing with `:error` cases, passing `:ok` results through unchanged.
+
+  When given result is `{:error, reason}`, the `reason` is passed into the callback
+  function. The callback function can then return a new `reason` which will be
+  returned from `handle` wrapped in an `{:error, _}` tuple.
+
+  If `:error` is the given result, `nil` will be given to the callback function.
+
+  The callback function can also return `:ok` or `{:ok, term()}` to have the error
+  be ignored and the `:ok` result will be returned instead.
+
+  ## Examples
+
+      iex> ping_account_server() |> Triage.handle(fn _ -> :account_server_failure end)
+      {:error, :account_server_failure}
+
+      iex> Triage.handle({:error, :unknown}, fn :unknown -> {:ok, @default_value} end)
+      {:ok, ...}
+
+      iex> Triage.handle(:ok, fn _ -> :not_used end)
+      :ok
+
+      iex> Triage.handle({:ok, ...}, fn _ -> :not_used end)
+      {:ok, 42}
+
+      iex> Triage.handle(:error, fn nil -> :handled end)
+      {:error, :handled}
+  """
+  @spec handle(result(), (term() -> term())) :: result()
   def handle(:error, func), do: handle({:error, nil}, func)
 
   def handle({:error, reason}, func) do
@@ -227,34 +267,65 @@ defmodule Triage do
     result
   end
 
-  def map!(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map!/2")
+  # TODO TODO: Need to figure out `map!` / `map` functions
+  #
+  # def map!(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map!/2")
+  #
+  # def map!({:ok, enumerable}, func) do
+  #   Enum.map(enumerable, &then!({:ok, &1}, func))
+  # end
+  #
+  # def map!(:error, _), do: :error
+  # def map!({:error, _} = error, _), do: error
+  #
+  # def map!(result, _) do
+  #   raise ArgumentError,
+  #         "Argument must be {:ok, _} / {:error, _} / :error, got: #{inspect(result)}"
+  # end
+  #
+  # def map(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map/2")
+  #
+  # def map({:ok, enumerable}, func) do
+  #   Enum.map(enumerable, &Triage.then({:ok, &1}, func))
+  # end
+  #
+  # def map(:error, _), do: :error
+  # def map({:error, _} = error, _), do: error
+  #
+  # def map(result, _) do
+  #   raise ArgumentError,
+  #         "Argument must be {:ok, _} / {:error, _} / :error, got: #{inspect(result)}"
+  # end
 
-  def map!({:ok, enumerable}, func) do
-    Enum.map(enumerable, &then!({:ok, &1}, func))
-  end
+  @doc """
+  Maps a function over an enumerable, collecting successful values and short-circuiting on the first error.
 
-  def map!(:error, _), do: :error
-  def map!({:error, _} = error, _), do: error
+  Takes an enumerable or `{:ok, enumerable}` and applies a function to each element.
+  If all callbacks return success with `{:ok, value}`), `map_unless` returns
+  `{:ok, [transformed_values]}`. If any call to the callback returns an error, `map_unless`
+  immediately stops processing and returns that error.
 
-  def map!(result, _) do
-    raise ArgumentError,
-          "Argument must be {:ok, _} / {:error, _} / :error, got: #{inspect(result)}"
-  end
+  If `map_unless` is given an `:error` result for it's first argument that argument is returned
+  unchanged and the callback is never called.
 
-  def map(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map/2")
+  This is useful when you need all transformations to succeed—if any fail, you don't want
+  the partial results.
 
-  def map({:ok, enumerable}, func) do
-    Enum.map(enumerable, &Triage.then({:ok, &1}, func))
-  end
+  ## Examples
 
-  def map(:error, _), do: :error
-  def map({:error, _} = error, _), do: error
+      iex> Triage.map_unless(xml_docs, & xml_to_json(&1, opts))
+      {:ok, [...]}
 
-  def map(result, _) do
-    raise ArgumentError,
-          "Argument must be {:ok, _} / {:error, _} / :error, got: #{inspect(result)}"
-  end
+      iex> Triage.map_unless(xml_docs, & xml_to_json(&1, opts))
+      {:error, ...}
 
+      iex> Triage.map_unless(:error, fn _ -> <not called> end)
+      :error
+
+      iex> Triage.map_unless({:error, :not_found}, fn _ -> <not called end)
+      {:error, :not_found}
+  """
+  @spec map_unless(result(), (term() -> term())) :: result()
   def map_unless({:ok, value}, func), do: map_unless(value, func)
   def map_unless(:error, _), do: :error
   def map_unless({:error, _} = error, _), do: error
@@ -279,6 +350,36 @@ defmodule Triage do
       result
   end
 
+  @doc """
+  Finds the first successful result from applying a function to enumerable elements.
+
+  Takes an enumerable or `{:ok, enumerable}` and applies a function to each element
+  The first successful result (`:ok` or `{:ok, value}`) from the callback is returned
+  from `find_value` and no further iteration is done.
+
+  If all callbacks return errors, then `{:error, [list of error reasons]}` is returned.
+  For `:error` atoms in the error list, they are represented as `nil`.
+
+  If `:error` or `{:error, reason}` is given as the first argument to `find_value`,
+  it is passed through unchanged.
+
+  This can be useful when you're trying multiple strategies or checking multiple
+  values to find the first one that works.
+
+  ## Examples
+
+      iex> Triage.find_value(domains, &ping_domain)
+      {:ok, "www.mydomain.com"}
+
+      iex> Triage.find_value({:ok, domains}, &ping_domain)
+      {:error, [:nxdomain, :timeout, :nxdomain]}
+
+      iex> Triage.find_value(:error, fn _ -> <not called> end)
+      :error
+
+      iex> Triage.find_value({:error, :not_found}, fn _ -> <not called> end)
+      {:error, :not_found}
+  """
   def find_value({:ok, input}, func), do: find_value(input, func)
   def find_value(:error, _), do: :error
   def find_value({:error, _} = error, _), do: error
@@ -300,6 +401,36 @@ defmodule Triage do
       result
   end
 
+  @doc """
+  Validates that all elements in an enumerable pass a validation function.
+
+  Takes an enumerable or `{:ok, enumerable}` and applies a callback function to each
+  element. If all callbacks return `:ok` or `{:ok, value}` then `:ok` is returned.
+
+  If any callback returns an error, immediately stops processing and returns that error.
+
+  If `:error` or `{:error, reason}` are given as the first argument, they are returned
+  unchanged. Note that even if callbacks return `{:ok, value}`, the values are discarded
+  and only `:ok` is returned — this function is for validation, not transformation.
+  See `map_unless/2` if you need transformation which short-circuits.
+
+  This is useful when you need to validate that all items in a collection meet certain
+  criteria before proceeding with subsequent operations.
+
+  ## Examples
+
+      iex> Triage.all(emails, &check_valid_email)
+      :ok
+
+      iex> Triage.all({:ok, emails}, &check_valid_email)
+      {:error, :invalid_hostname}
+
+      iex> Triage.all(:error, fn _ -> <not called> end)
+      :error
+
+      iex> Triage.all({:error, :not_found}, fn _ -> <not called> end)
+      {:error, :not_found}
+  """
   def all({:ok, input}, func), do: all(input, func)
   def all(:error, _), do: :error
   def all({:error, _} = error, _), do: error
@@ -367,6 +498,7 @@ defmodule Triage do
   #    * %MyApp.Accounts.User{id: 123, ...}
   #    * #Ecto.Changeset<action: ..., changes: ..., ...>
 
+  @doc false
   def result_details({:error, %WrappedError{} = exception}) do
     errors = WrappedError.unwrap(exception)
     last_error = List.last(errors)
