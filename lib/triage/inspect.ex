@@ -1,16 +1,16 @@
 defmodule Triage.Inspect do
-  @moduledoc """
-  Logic to do smart inspecting of values.  Part of that is outputting only the most useful
-  attributes for debugging (IDs, names, etc...)
-  """
+  @moduledoc false
+
+  # Logic to do smart inspecting of values.  Part of that is outputting only the most useful
+  # attributes for debugging (IDs, names, etc...)
 
   defmodule Wrapper do
-    @moduledoc """
-    Struct to simply hold some term(). To be able to render an inspect string
-    by controlling the algebra (see `defimpl Inspect, for: Triage.Inspect.Wrapper do` below)
-    If there's an official way in the Elixir API to take algebra and turn it into a string
-    then that would be better
-    """
+    @moduledoc false
+
+    # Struct to simply hold some term(). To be able to render an inspect string
+    # by controlling the algebra (see `defimpl Inspect, for: Triage.Inspect.Wrapper do` # below)
+    # If there's an official way in the Elixir API to take algebra and turn it into a string
+    # then that would be better
 
     defstruct [:value]
   end

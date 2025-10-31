@@ -1,4 +1,19 @@
 defmodule Triage.WrappedError do
+  @moduledoc """
+  Exception struct which is returned in `{:error, _}` tuples when
+  the `wrap_context` module is used.
+
+  Contains
+   * context string
+   * context metadata
+   * an original error result (could be within nested `WrappedError`s)
+
+
+  These things help make it clearer where an error is coming from.
+
+  Works well with the `log` and `user_message` functions.
+  """
+
   alias Triage.Stacktrace
 
   @enforce_keys [:result, :reason]
