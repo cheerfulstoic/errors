@@ -1,4 +1,4 @@
-defmodule Errors.JSONTest do
+defmodule Triage.JSONTest do
   use ExUnit.Case
 
   defmodule Person do
@@ -18,7 +18,7 @@ defmodule Errors.JSONTest do
   end
 
   def shrink(value) do
-    Errors.JSON.Shrink.shrink(value)
+    Triage.JSON.Shrink.shrink(value)
     |> tap(fn result ->
       # Shouldn't fail when encoding to JSON
       Jason.encode!(result)
@@ -207,7 +207,7 @@ defmodule Errors.JSONTest do
       result = shrink(person)
 
       assert result == %{
-               __struct__: "Errors.JSONTest.Person",
+               __struct__: "Triage.JSONTest.Person",
                id: 1,
                name: "Alice Johnson",
                role_id: 5
@@ -220,7 +220,7 @@ defmodule Errors.JSONTest do
       result = shrink(person)
 
       assert result == %{
-               __struct__: "Errors.JSONTest.Person",
+               __struct__: "Triage.JSONTest.Person",
                id: 2,
                name: "Bob",
                role_id: nil
@@ -234,7 +234,7 @@ defmodule Errors.JSONTest do
 
       # All fields are nil and not identifying except id and name which are nil
       assert result == %{
-               __struct__: "Errors.JSONTest.City",
+               __struct__: "Triage.JSONTest.City",
                id: nil,
                name: nil
              }
@@ -259,11 +259,11 @@ defmodule Errors.JSONTest do
       result = shrink(person)
 
       assert result == %{
-               __struct__: "Errors.JSONTest.Person",
+               __struct__: "Triage.JSONTest.Person",
                id: 1,
                name: "Alice Johnson",
                city: %{
-                 __struct__: "Errors.JSONTest.City",
+                 __struct__: "Triage.JSONTest.City",
                  id: 2,
                  name: "Alicetown"
                },
@@ -301,7 +301,7 @@ defmodule Errors.JSONTest do
       result = shrink(exception)
 
       assert result == %{
-               __struct__: "Errors.JSONTest.CustomError",
+               __struct__: "Triage.JSONTest.CustomError",
                __message__: "custom error",
                code: 500
              }
@@ -321,10 +321,10 @@ defmodule Errors.JSONTest do
   describe "shrink/1 with WrappedError" do
     test "shrinks single WrappedError" do
       exception =
-        Errors.WrappedError.new(
+        Triage.WrappedError.new(
           {:error, :failed},
           "doing something",
-          [{Errors.JSONTest, :test_function, 2, [file: ~c"test/shrink_test.exs", line: 10]}],
+          [{Triage.JSONTest, :test_function, 2, [file: ~c"test/shrink_test.exs", line: 10]}],
           %{foo: 123, bar: "baz"}
         )
 
@@ -336,23 +336,23 @@ defmodule Errors.JSONTest do
       assert context.label == "doing something"
       # Metadata gets shrunk - no identifying fields
       assert context.metadata == %{}
-      assert context.stacktrace == ["test/shrink_test.exs:10: Errors.JSONTest.test_function/2"]
+      assert context.stacktrace == ["test/shrink_test.exs:10: Triage.JSONTest.test_function/2"]
     end
 
     test "shrinks nested WrappedError" do
       nested_exception =
-        Errors.WrappedError.new(
+        Triage.WrappedError.new(
           {:error, %RuntimeError{message: "an example error message"}},
           "lower down",
-          [{Errors.JSONTest, :made_up_function, 0, [file: ~c"test/shrink_test.exs", line: 18]}],
+          [{Triage.JSONTest, :made_up_function, 0, [file: ~c"test/shrink_test.exs", line: 18]}],
           %{foo: 123, bar: "baz"}
         )
 
       exception =
-        Errors.WrappedError.new(
+        Triage.WrappedError.new(
           {:error, nested_exception},
           "higher up",
-          [{Errors.JSONTest, :test_function, 2, [file: ~c"test/shrink_test.exs", line: 10]}],
+          [{Triage.JSONTest, :test_function, 2, [file: ~c"test/shrink_test.exs", line: 10]}],
           %{something: %{whatever: :hello}}
         )
 
@@ -377,10 +377,10 @@ defmodule Errors.JSONTest do
 
     test "WrappedError with nil context" do
       exception =
-        Errors.WrappedError.new(
+        Triage.WrappedError.new(
           {:error, :failed},
           nil,
-          [{Errors.JSONTest, :test_function, 2, [file: ~c"test/shrink_test.exs", line: 10]}],
+          [{Triage.JSONTest, :test_function, 2, [file: ~c"test/shrink_test.exs", line: 10]}],
           %{foo: 123}
         )
 
@@ -465,7 +465,7 @@ defmodule Errors.JSONTest do
     test "anonymous function is converted to Module.name/arity format" do
       func = fn x -> x + 1 end
 
-      assert shrink(func) =~ ~r/^&Errors\.JSONTest\.\-test shrink\/1.*\/1/
+      assert shrink(func) =~ ~r/^&Triage\.JSONTest\.\-test shrink\/1.*\/1/
     end
 
     test "captured function is converted to Module.name/arity format" do
@@ -513,7 +513,7 @@ defmodule Errors.JSONTest do
       }
 
       assert shrink(custom) == %{
-               __struct__: "Errors.JSONTest.CustomStruct",
+               __struct__: "Triage.JSONTest.CustomStruct",
                id: 1,
                user_id: 456,
                bar: [1, 2, 3]
@@ -531,7 +531,7 @@ defmodule Errors.JSONTest do
       result = shrink(custom)
 
       assert result == %{
-               __struct__: "Errors.JSONTest.CustomStruct",
+               __struct__: "Triage.JSONTest.CustomStruct",
                id: 1,
                user_id: 456,
                bar: %{name: "test"}

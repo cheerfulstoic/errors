@@ -1,14 +1,31 @@
-defmodule Errors.MixProject do
+defmodule Triage.MixProject do
   use Mix.Project
+
+  @source_url "https://github.com/cheerfulstoic/triage"
 
   def project do
     [
-      app: :errors,
-      version: "0.1.0",
+      app: :triage,
+      version: "0.2.0",
       elixir: "~> 1.15",
+      # TODO
+      description: "... TODO ...",
+      licenses: ["MIT"],
+      package: package(),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: docs()
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["Brian Underwood"],
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => @source_url,
+        Changelog: "#{@source_url}/blob/main/CHANGELOG.md"
+      }
     ]
   end
 
@@ -28,7 +45,8 @@ defmodule Errors.MixProject do
         # "guides/introduction/Getting Started.md",
         "guides/introduction/Contexts.md",
         "guides/introduction/Control Flow.md",
-        "guides/introduction/Enumerating Errors.md",
+        "guides/introduction/Enumerating Triage.md",
+        "guides/introduction/Comparison to with.md",
         "guides/examples/find_working_url.md",
         "CHANGELOG.md"
       ],

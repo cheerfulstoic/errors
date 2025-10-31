@@ -1,10 +1,10 @@
-defmodule Errors do
+defmodule Triage do
   @moduledoc """
-  Documentation for `Errors`.
+  Documentation for `Triage`.
   """
 
-  alias Errors.Stacktrace
-  alias Errors.WrappedError
+  alias Triage.Stacktrace
+  alias Triage.WrappedError
   require Logger
   require Stacktrace
 
@@ -12,7 +12,7 @@ defmodule Errors do
   Wraps error results with additional context information, leaving successful results unchanged.
 
   Takes a result tuple and wraps error cases (`:error` or `{:error, reason}`) with
-  context information and metadata, returning `{:error, %Errors.WrappedError{}}`. Success
+  context information and metadata, returning `{:error, %Triage.WrappedError{}}`. Success
   cases (`:ok` or `{:ok, value}`) are passed through unchanged.
 
   ## Parameters
@@ -22,17 +22,17 @@ defmodule Errors do
 
   ## Examples
 
-      iex> Errors.wrap_context({:ok, 42}, "fetching user")
+      iex> Triage.wrap_context({:ok, 42}, "fetching user")
       {:ok, 42}
 
-      iex> Errors.wrap_context(:error, "fetching user")
-      {:error, %Errors.WrappedError{}}
+      iex> Triage.wrap_context(:error, "fetching user")
+      {:error, %Triage.WrappedError{}}
 
-      iex> Errors.wrap_context({:error, :not_found}, "fetching user", %{user_id: 123})
-      {:error, %Errors.WrappedError{}}
+      iex> Triage.wrap_context({:error, :not_found}, "fetching user", %{user_id: 123})
+      {:error, %Triage.WrappedError{}}
 
-      iex> Errors.wrap_context({:error, :not_found}, %{user_id: 123})
-      {:error, %Errors.WrappedError{}}
+      iex> Triage.wrap_context({:error, :not_found}, %{user_id: 123})
+      {:error, %Triage.WrappedError{}}
   """
   def wrap_context(:ok, _meta), do: :ok
 
@@ -153,7 +153,7 @@ defmodule Errors do
 
   Calls the provided zero-arity function and ensures it returns a valid result.
   If the function raises an exception, it catches it and returns
-  `{:error, %Errors.WrappedError{}}` with details about the exception.
+  `{:error, %Triage.WrappedError{}}` with details about the exception.
 
   ## Parameters
 
@@ -165,7 +165,7 @@ defmodule Errors do
       {:ok, 42}
 
       iex> then(fn -> raise "boom" end)
-      {:error, %Errors.WrappedError{}}
+      {:error, %Triage.WrappedError{}}
   """
   def then(func) do
     try do
@@ -182,7 +182,7 @@ defmodule Errors do
   Takes a result from a previous then and, if successful, passes the unwrapped value
   to the provided function. If the previous result was an error, short-circuits and
   returns the error. If the function raises an exception, it catches it and returns
-  `{:error, %Errors.WrappedError{}}` with details about the exception.
+  `{:error, %Triage.WrappedError{}}` with details about the exception.
 
   ## Parameters
 
@@ -195,7 +195,7 @@ defmodule Errors do
       {:ok, 10}
 
       iex> then({:ok, 5}, fn _x -> raise "boom" end)
-      {:error, %Errors.WrappedError{}}
+      {:error, %Triage.WrappedError{}}
   """
   def then(result, func) do
     try do
@@ -244,7 +244,7 @@ defmodule Errors do
   def map(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map/2")
 
   def map({:ok, enumerable}, func) do
-    Enum.map(enumerable, &Errors.then({:ok, &1}, func))
+    Enum.map(enumerable, &Triage.then({:ok, &1}, func))
   end
 
   def map(:error, _), do: :error
@@ -263,7 +263,7 @@ defmodule Errors do
     {:ok,
      Enum.map(values, fn value ->
        case func.(value) do
-         # :ok -> 
+         # :ok ->
          {:ok, value} ->
            value
 
@@ -385,37 +385,37 @@ defmodule Errors do
     %{
       type: "error",
       mod: mod,
-      reason: Errors.JSON.Shrink.shrink(exception),
+      reason: Triage.JSON.Shrink.shrink(exception),
       message:
-        "{:error, #{Errors.Inspect.inspect(exception)}} (message: #{exception_message(exception)})"
+        "{:error, #{Triage.Inspect.inspect(exception)}} (message: #{exception_message(exception)})"
     }
   end
 
   def result_details({:error, reason}) do
     %{
       type: "error",
-      message: "{:error, #{Errors.Inspect.inspect(reason)}}",
-      reason: Errors.JSON.Shrink.shrink(reason)
+      message: "{:error, #{Triage.Inspect.inspect(reason)}}",
+      reason: Triage.JSON.Shrink.shrink(reason)
     }
   end
 
   def result_details(:error) do
     %{
       type: "error",
-      message: Errors.Inspect.inspect(:error)
+      message: Triage.Inspect.inspect(:error)
     }
   end
 
   def result_details({:ok, value}) do
     %{
       type: "ok",
-      message: "{:ok, #{Errors.Inspect.inspect(value)}}",
-      value: Errors.JSON.Shrink.shrink(value)
+      message: "{:ok, #{Triage.Inspect.inspect(value)}}",
+      value: Triage.JSON.Shrink.shrink(value)
     }
   end
 
   def result_details(:ok) do
-    %{type: "ok", message: Errors.Inspect.inspect(:ok)}
+    %{type: "ok", message: Triage.Inspect.inspect(:ok)}
   end
 
   # If `result` isn't :ok/:error/{:ok, _}/{:error, _} then it was a raised exception
@@ -423,7 +423,7 @@ defmodule Errors do
     %{
       type: "raise",
       message: "** (#{inspect(mod)}) #{Exception.message(exception)}",
-      reason: Errors.JSON.Shrink.shrink(exception)
+      reason: Triage.JSON.Shrink.shrink(exception)
     }
   end
 
@@ -449,14 +449,14 @@ defmodule Errors do
 
   ## Parameters
 
-    * `reason` - The error to convert (string, exception, `%Errors.WrappedError{}`, or any value)
+    * `reason` - The error to convert (string, exception, `%Triage.WrappedError{}`, or any value)
 
   ## Examples
 
       iex> user_message("Invalid email")
       "Invalid email"
 
-      iex> user_message(%Errors.WrappedError{})
+      iex> user_message(%Triage.WrappedError{})
       "not found (happened while: fetching user => validating email)"
 
       iex> user_message(%RuntimeError{message: "boom"})
@@ -476,20 +476,20 @@ defmodule Errors do
   end
 
   def user_message(exception) when is_exception(exception) do
-    error_code = Errors.String.generate(8)
+    error_code = Triage.String.generate(8)
 
     Logger.error(
-      "#{error_code}: Could not generate user error message. Error was: #{Errors.Inspect.inspect(exception)} (message: #{exception_message(exception)})"
+      "#{error_code}: Could not generate user error message. Error was: #{Triage.Inspect.inspect(exception)} (message: #{exception_message(exception)})"
     )
 
     "There was an error. Refer to code: #{error_code}"
   end
 
   def user_message(reason) do
-    error_code = Errors.String.generate(8)
+    error_code = Triage.String.generate(8)
 
     Logger.error(
-      "#{error_code}: Could not generate user error message. Error was: #{Errors.Inspect.inspect(reason)}"
+      "#{error_code}: Could not generate user error message. Error was: #{Triage.Inspect.inspect(reason)}"
     )
 
     "There was an error. Refer to code: #{error_code}"
@@ -548,16 +548,16 @@ defmodule Errors do
 
   ## Examples
 
-      iex> Errors.ok?(:ok)
+      iex> Triage.ok?(:ok)
       true
 
-      iex> Errors.ok?({:ok, 42})
+      iex> Triage.ok?({:ok, 42})
       true
 
-      iex> Errors.ok?(:error)
+      iex> Triage.ok?(:error)
       false
 
-      iex> Errors.ok?({:error, :not_found})
+      iex> Triage.ok?({:error, :not_found})
       false
   """
   def ok?(:ok), do: true
@@ -574,16 +574,16 @@ defmodule Errors do
 
   ## Examples
 
-      iex> Errors.error?(:error)
+      iex> Triage.error?(:error)
       true
 
-      iex> Errors.error?({:error, :not_found})
+      iex> Triage.error?({:error, :not_found})
       true
 
-      iex> Errors.error?(:ok)
+      iex> Triage.error?(:ok)
       false
 
-      iex> Errors.error?({:ok, 42})
+      iex> Triage.error?({:ok, 42})
       false
   """
   def error?(:ok), do: false

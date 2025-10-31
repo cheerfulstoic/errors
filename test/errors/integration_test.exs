@@ -1,4 +1,4 @@
-defmodule Errors.IntegrationTest do
+defmodule Triage.IntegrationTest do
   use ExUnit.Case
   import ExUnit.CaptureLog
 
@@ -17,10 +17,10 @@ defmodule Errors.IntegrationTest do
   describe "then!/1 with wrap_context" do
     test "wraps error with context" do
       result =
-        Errors.then!(fn -> {:error, "database connection failed"} end)
-        |> Errors.wrap_context("Fetching user")
+        Triage.then!(fn -> {:error, "database connection failed"} end)
+        |> Triage.wrap_context("Fetching user")
 
-      assert {:error, %Errors.WrappedError{} = wrapped_error} = result
+      assert {:error, %Triage.WrappedError{} = wrapped_error} = result
       assert wrapped_error.context == "Fetching user"
       assert wrapped_error.metadata == %{}
       assert wrapped_error.result == {:error, "database connection failed"}
@@ -28,12 +28,12 @@ defmodule Errors.IntegrationTest do
 
     test "wraps error in multi-then chain" do
       result =
-        Errors.then!(fn -> {:ok, 10} end)
-        |> Errors.then!(fn _ -> {:error, "calculation failed"} end)
-        |> Errors.then!(fn _ -> raise "Should not be called" end)
-        |> Errors.wrap_context("Final calculation")
+        Triage.then!(fn -> {:ok, 10} end)
+        |> Triage.then!(fn _ -> {:error, "calculation failed"} end)
+        |> Triage.then!(fn _ -> raise "Should not be called" end)
+        |> Triage.wrap_context("Final calculation")
 
-      assert {:error, %Errors.WrappedError{} = wrapped_error} = result
+      assert {:error, %Triage.WrappedError{} = wrapped_error} = result
       assert wrapped_error.context == "Final calculation"
       assert wrapped_error.metadata == %{}
       assert wrapped_error.result == {:error, "calculation failed"}
@@ -44,10 +44,10 @@ defmodule Errors.IntegrationTest do
     test "wraps error with context" do
       result =
         {:error, "user not found"}
-        |> Errors.then!(fn _ -> raise "Should not be called" end)
-        |> Errors.wrap_context("Fetching user")
+        |> Triage.then!(fn _ -> raise "Should not be called" end)
+        |> Triage.wrap_context("Fetching user")
 
-      assert {:error, %Errors.WrappedError{} = wrapped_error} = result
+      assert {:error, %Triage.WrappedError{} = wrapped_error} = result
       assert wrapped_error.context == "Fetching user"
       assert wrapped_error.metadata == %{}
       assert wrapped_error.result == {:error, "user not found"}
@@ -56,16 +56,16 @@ defmodule Errors.IntegrationTest do
     test "chains multiple wrap_context calls" do
       result =
         {:ok, "user@example.com"}
-        |> Errors.then!(fn email -> {:error, "invalid email: #{email}"} end)
-        |> Errors.wrap_context("first")
-        |> Errors.then!(fn _ -> raise "Should not be called" end)
-        |> Errors.wrap_context("second")
+        |> Triage.then!(fn email -> {:error, "invalid email: #{email}"} end)
+        |> Triage.wrap_context("first")
+        |> Triage.then!(fn _ -> raise "Should not be called" end)
+        |> Triage.wrap_context("second")
 
-      assert {:error, %Errors.WrappedError{} = wrapped_error} = result
+      assert {:error, %Triage.WrappedError{} = wrapped_error} = result
       assert wrapped_error.context == "second"
       assert wrapped_error.metadata == %{}
 
-      assert {:error, %Errors.WrappedError{} = second_wrapped_error} = wrapped_error.result
+      assert {:error, %Triage.WrappedError{} = second_wrapped_error} = wrapped_error.result
       assert second_wrapped_error.context == "first"
       assert second_wrapped_error.metadata == %{}
       assert second_wrapped_error.result == {:error, "invalid email: user@example.com"}
@@ -78,18 +78,18 @@ defmodule Errors.IntegrationTest do
 
       result =
         {:ok, 10}
-        |> Errors.then(func)
-        |> Errors.wrap_context("Processing payment")
+        |> Triage.then(func)
+        |> Triage.wrap_context("Processing payment")
 
-      assert {:error, %Errors.WrappedError{} = wrapped_error} = result
+      assert {:error, %Triage.WrappedError{} = wrapped_error} = result
       assert wrapped_error.context == "Processing payment"
       assert wrapped_error.metadata == %{}
 
-      assert {:error, %Errors.WrappedError{} = second_wrapped_error} = wrapped_error.result
+      assert {:error, %Triage.WrappedError{} = second_wrapped_error} = wrapped_error.result
       assert second_wrapped_error.context == func
       assert second_wrapped_error.metadata == %{}
 
-      assert {Errors.IntegrationTest,
+      assert {Triage.IntegrationTest,
               :"-test then/2 with wrap_context wraps caught exception with context/1-fun-0-", _,
               [file: ~c"test/errors/integration_test.exs", line: _]} =
                List.first(second_wrapped_error.stacktrace)
@@ -101,10 +101,10 @@ defmodule Errors.IntegrationTest do
     test "wraps error with context" do
       result =
         {:error, "user not found"}
-        |> Errors.then(fn _ -> raise "Should not be called" end)
-        |> Errors.wrap_context("Fetching user")
+        |> Triage.then(fn _ -> raise "Should not be called" end)
+        |> Triage.wrap_context("Fetching user")
 
-      assert {:error, %Errors.WrappedError{} = wrapped_error} = result
+      assert {:error, %Triage.WrappedError{} = wrapped_error} = result
       assert wrapped_error.context == "Fetching user"
       assert wrapped_error.metadata == %{}
       assert wrapped_error.result == {:error, "user not found"}
@@ -113,16 +113,16 @@ defmodule Errors.IntegrationTest do
     test "chains multiple wrap_context calls" do
       result =
         {:ok, "user@example.com"}
-        |> Errors.then(fn email -> {:error, "invalid email: #{email}"} end)
-        |> Errors.wrap_context("first")
-        |> Errors.then(fn _ -> raise "Should not be called" end)
-        |> Errors.wrap_context("second")
+        |> Triage.then(fn email -> {:error, "invalid email: #{email}"} end)
+        |> Triage.wrap_context("first")
+        |> Triage.then(fn _ -> raise "Should not be called" end)
+        |> Triage.wrap_context("second")
 
-      assert {:error, %Errors.WrappedError{} = wrapped_error} = result
+      assert {:error, %Triage.WrappedError{} = wrapped_error} = result
       assert wrapped_error.context == "second"
       assert wrapped_error.metadata == %{}
 
-      assert {:error, %Errors.WrappedError{} = second_wrapped_error} = wrapped_error.result
+      assert {:error, %Triage.WrappedError{} = second_wrapped_error} = wrapped_error.result
       assert second_wrapped_error.context == "first"
       assert second_wrapped_error.metadata == %{}
       assert second_wrapped_error.result == {:error, "invalid email: user@example.com"}
@@ -134,11 +134,11 @@ defmodule Errors.IntegrationTest do
       log =
         capture_log([level: :error], fn ->
           result =
-            Errors.then!(fn -> {:error, "database timeout"} end)
-            |> Errors.wrap_context("Fetching user data")
-            |> Errors.log()
+            Triage.then!(fn -> {:error, "database timeout"} end)
+            |> Triage.wrap_context("Fetching user data")
+            |> Triage.log()
 
-          assert {:error, %Errors.WrappedError{}} = result
+          assert {:error, %Triage.WrappedError{}} = result
         end)
 
       assert log =~
@@ -151,17 +151,17 @@ defmodule Errors.IntegrationTest do
         capture_log([level: :error], fn ->
           result =
             {:ok, 100}
-            |> Errors.then(&Errors.TestHelper.raise_argument_error/1)
-            |> Errors.wrap_context("Processing payment")
-            |> Errors.log()
+            |> Triage.then(&Triage.TestHelper.raise_argument_error/1)
+            |> Triage.wrap_context("Processing payment")
+            |> Triage.log()
 
-          assert {:error, %Errors.WrappedError{}} = result
+          assert {:error, %Triage.WrappedError{}} = result
         end)
 
       assert log =~
                ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: \*\* \(ArgumentError\) amount too high
     \[CONTEXT\] test/errors/integration_test\.exs:\d+: Processing payment
-    \[CONTEXT\] lib/errors/test_helper.ex:\d+: Errors\.TestHelper\.raise_argument_error/1>
+    \[CONTEXT\] lib/errors/test_helper.ex:\d+: Triage\.TestHelper\.raise_argument_error/1>
     end
 
     test "logs deeply nested contexts" do
@@ -169,13 +169,13 @@ defmodule Errors.IntegrationTest do
         capture_log([level: :error], fn ->
           result =
             {:ok, "test@example.com"}
-            |> Errors.then!(fn email -> {:error, "invalid domain for #{email}"} end)
-            |> Errors.wrap_context("Validating email")
-            |> Errors.wrap_context("User registration")
-            |> Errors.wrap_context("API endpoint: /users")
-            |> Errors.log()
+            |> Triage.then!(fn email -> {:error, "invalid domain for #{email}"} end)
+            |> Triage.wrap_context("Validating email")
+            |> Triage.wrap_context("User registration")
+            |> Triage.wrap_context("API endpoint: /users")
+            |> Triage.log()
 
-          assert {:error, %Errors.WrappedError{}} = result
+          assert {:error, %Triage.WrappedError{}} = result
         end)
 
       assert log =~
@@ -188,7 +188,7 @@ defmodule Errors.IntegrationTest do
     test "does not log successes with :errors mode" do
       log =
         capture_log([level: :error], fn ->
-          result = {:ok, "success"} |> Errors.log()
+          result = {:ok, "success"} |> Triage.log()
           assert result == {:ok, "success"}
         end)
 
@@ -198,7 +198,7 @@ defmodule Errors.IntegrationTest do
     test "logs successes with :all mode" do
       log =
         capture_log([level: :info], fn ->
-          result = {:ok, 42} |> Errors.log(:all)
+          result = {:ok, 42} |> Triage.log(:all)
           assert result == {:ok, 42}
         end)
 
@@ -210,19 +210,19 @@ defmodule Errors.IntegrationTest do
         capture_log([level: :error], fn ->
           result =
             {:ok, 5}
-            |> Errors.then(fn x -> x * 2 end)
-            |> Errors.then(fn x -> x + 3 end)
-            |> Errors.then(fn _ -> raise RuntimeError, "unexpected failure" end)
-            |> Errors.wrap_context("Data processing pipeline")
-            |> Errors.log()
+            |> Triage.then(fn x -> x * 2 end)
+            |> Triage.then(fn x -> x + 3 end)
+            |> Triage.then(fn _ -> raise RuntimeError, "unexpected failure" end)
+            |> Triage.wrap_context("Data processing pipeline")
+            |> Triage.log()
 
-          assert {:error, %Errors.WrappedError{}} = result
+          assert {:error, %Triage.WrappedError{}} = result
         end)
 
       assert log =~
                ~r<\[RESULT\] test/errors/integration_test\.exs:\d+: \*\* \(RuntimeError\) unexpected failure
     \[CONTEXT\] test/errors/integration_test\.exs:\d+: Data processing pipeline
-    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Errors\.IntegrationTest\.-test log with wrapped errors logs then/2 chain with exception and wrap_context/1-fun-0-/1>
+    \[CONTEXT\] test/errors/integration_test\.exs:\d+: Triage\.IntegrationTest\.-test log with wrapped errors logs then/2 chain with exception and wrap_context/1-fun-0-/1>
     end
   end
 
@@ -231,8 +231,8 @@ defmodule Errors.IntegrationTest do
   #     capture_log([level: :error], fn ->
   #       {:ok, "123u"}
   #       # Raises if not a valid integer
-  #       |> Errors.then(&String.to_integer/1)
-  #       |> Errors.log()
+  #       |> Triage.then(&String.to_integer/1)
+  #       |> Triage.log()
   #     end)
   #
   #   assert log =~
@@ -242,21 +242,21 @@ defmodule Errors.IntegrationTest do
   #
   #   \[CONTEXT\] :erlang\.binary_to_integer/1>
   #
-  #   Application.put_env(:errors, :log_adapter, Errors.LogAdapter.JSON)
+  #   Application.put_env(:errors, :log_adapter, Triage.LogAdapter.JSON)
   #
   #   log =
   #     capture_log([level: :error], fn ->
   #       {:ok, "123u"}
   #       # Raises if not a valid integer
-  #       |> Errors.then(&String.to_integer/1)
-  #       |> Errors.log()
+  #       |> Triage.then(&String.to_integer/1)
+  #       |> Triage.log()
   #     end)
   #
   #   [_, json] = Regex.run(~r/\[error\] (.*)/, log)
   #
   #   data = Jason.decode!(json)
   #
-  #   assert data["source"] == "Errors"
+  #   assert data["source"] == "Triage"
   #   assert data["stacktrace_line"] =~ ~r[^lib/ex_unit/capture_log\.ex:\d+$]
   #
   #   assert data["result_details"]["type"] == "error"

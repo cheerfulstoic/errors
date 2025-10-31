@@ -1,4 +1,4 @@
-defmodule Errors.InspectTest do
+defmodule Triage.InspectTest do
   use ExUnit.Case
 
   defmodule Person do
@@ -74,7 +74,7 @@ defmodule Errors.InspectTest do
       ]
 
       for value <- values do
-        assert Errors.Inspect.inspect(value) == inspect(value)
+        assert Triage.Inspect.inspect(value) == inspect(value)
       end
     end
 
@@ -89,22 +89,22 @@ defmodule Errors.InspectTest do
         country: "USA"
       }
 
-      assert Errors.Inspect.inspect(person) ==
-               ~s(#Errors.InspectTest.Person<id: 1, name: "Alice Johnson", role_id: 5, ...>)
+      assert Triage.Inspect.inspect(person) ==
+               ~s(#Triage.InspectTest.Person<id: 1, name: "Alice Johnson", role_id: 5, ...>)
     end
 
     test "struct with nil values" do
       person = %Person{id: 2, name: "Bob"}
 
-      assert Errors.Inspect.inspect(person) ==
-               ~s(#Errors.InspectTest.Person<id: 2, name: "Bob", role_id: nil, ...>)
+      assert Triage.Inspect.inspect(person) ==
+               ~s(#Triage.InspectTest.Person<id: 2, name: "Bob", role_id: nil, ...>)
     end
 
     test "empty struct" do
       person = %Person{}
 
-      assert Errors.Inspect.inspect(person) ==
-               "#Errors.InspectTest.Person<id: nil, name: nil, role_id: nil, ...>"
+      assert Triage.Inspect.inspect(person) ==
+               "#Triage.InspectTest.Person<id: nil, name: nil, role_id: nil, ...>"
     end
 
     test "nested structs" do
@@ -123,8 +123,8 @@ defmodule Errors.InspectTest do
         country: "USA"
       }
 
-      assert Errors.Inspect.inspect(person) ==
-               "#Errors.InspectTest.Person<id: 1, name: \"Alice Johnson\", city: #Errors.InspectTest.City<id: 2, name: \"Alicetown\", ...>, role_id: 5, ...>"
+      assert Triage.Inspect.inspect(person) ==
+               "#Triage.InspectTest.Person<id: 1, name: \"Alice Johnson\", city: #Triage.InspectTest.City<id: 2, name: \"Alicetown\", ...>, role_id: 5, ...>"
     end
   end
 end

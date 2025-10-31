@@ -1,4 +1,4 @@
-defmodule Errors.TestHelper do
+defmodule Triage.TestHelper do
   @moduledoc false
 
   # This is a weird solution, but this exists because in some tests we need to have some
@@ -6,7 +6,7 @@ defmodule Errors.TestHelper do
 
   @doc false
   def run_log(result, mode) do
-    new_result = Errors.log(result, mode)
+    new_result = Triage.log(result, mode)
 
     blah()
 

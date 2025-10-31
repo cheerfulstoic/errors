@@ -1,4 +1,4 @@
-defmodule Errors.Inspect do
+defmodule Triage.Inspect do
   @moduledoc """
   Logic to do smart inspecting of values.  Part of that is outputting only the most useful
   attributes for debugging (IDs, names, etc...)
@@ -7,7 +7,7 @@ defmodule Errors.Inspect do
   defmodule Wrapper do
     @moduledoc """
     Struct to simply hold some term(). To be able to render an inspect string
-    by controlling the algebra (see `defimpl Inspect, for: Errors.Inspect.Wrapper do` below)
+    by controlling the algebra (see `defimpl Inspect, for: Triage.Inspect.Wrapper do` below)
     If there's an official way in the Elixir API to take algebra and turn it into a string
     then that would be better
     """
@@ -40,7 +40,7 @@ defmodule Errors.Inspect do
   defp wrap_value(value), do: value
 end
 
-defimpl Inspect, for: Errors.Inspect.Wrapper do
+defimpl Inspect, for: Triage.Inspect.Wrapper do
   def inspect(%{value: value}, opts) do
     inspect_value(value, opts)
   end

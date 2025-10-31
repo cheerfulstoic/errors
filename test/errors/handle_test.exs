@@ -1,4 +1,4 @@
-defmodule Errors.HandleTest do
+defmodule Triage.HandleTest do
   use ExUnit.Case
 
   describe "handle/1" do
@@ -8,27 +8,27 @@ defmodule Errors.HandleTest do
       assert_raise ArgumentError,
                    "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: :ook",
                    fn ->
-                     Errors.handle(:ook, func) == :ok
+                     Triage.handle(:ook, func) == :ok
                    end
 
       assert_raise ArgumentError,
                    "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: 123",
                    fn ->
-                     Errors.handle(123, func) == :ok
+                     Triage.handle(123, func) == :ok
                    end
 
       assert_raise ArgumentError,
                    "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: {:wow, 246}",
                    fn ->
-                     Errors.handle({:wow, 246}, func) == {:ok, 246}
+                     Triage.handle({:wow, 246}, func) == {:ok, 246}
                    end
     end
 
     test "passes through successes unchanged" do
       func = fn :unknown -> :not_found end
 
-      assert Errors.handle(:ok, func) == :ok
-      assert Errors.handle({:ok, 246}, func) == {:ok, 246}
+      assert Triage.handle(:ok, func) == :ok
+      assert Triage.handle({:ok, 246}, func) == {:ok, 246}
     end
 
     test ":error atom" do
@@ -38,7 +38,7 @@ defmodule Errors.HandleTest do
         nil -> :wow_nil_cool
       end
 
-      assert Errors.handle(:error, func) == {:error, :wow_nil_cool}
+      assert Triage.handle(:error, func) == {:error, :wow_nil_cool}
 
       func = fn
         :unknown -> :not_found
@@ -46,7 +46,7 @@ defmodule Errors.HandleTest do
       end
 
       assert_raise FunctionClauseError, fn ->
-        Errors.handle(:error, func)
+        Triage.handle(:error, func)
       end
     end
 
@@ -56,11 +56,11 @@ defmodule Errors.HandleTest do
         :server_timed_out -> :timeout
       end
 
-      assert Errors.handle({:error, :unknown}, func) == {:error, :not_found}
-      assert Errors.handle({:error, :server_timed_out}, func) == {:error, :timeout}
+      assert Triage.handle({:error, :unknown}, func) == {:error, :not_found}
+      assert Triage.handle({:error, :server_timed_out}, func) == {:error, :timeout}
 
       assert_raise FunctionClauseError, fn ->
-        Errors.handle({:error, :something_else}, func)
+        Triage.handle({:error, :something_else}, func)
       end
     end
 
@@ -71,9 +71,9 @@ defmodule Errors.HandleTest do
         :whatever -> :ok
       end
 
-      assert Errors.handle({:error, :unknown}, func) == {:error, :not_found}
-      assert Errors.handle({:error, :server_timed_out}, func) == {:ok, :default_value}
-      assert Errors.handle({:error, :whatever}, func) == :ok
+      assert Triage.handle({:error, :unknown}, func) == {:error, :not_found}
+      assert Triage.handle({:error, :server_timed_out}, func) == {:ok, :default_value}
+      assert Triage.handle({:error, :whatever}, func) == :ok
     end
   end
 end

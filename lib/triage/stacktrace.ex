@@ -1,12 +1,12 @@
-defmodule Errors.Stacktrace do
-  @moduledoc "Tools to get relevant stacktrace info for app using the Errors library"
+defmodule Triage.Stacktrace do
+  @moduledoc "Tools to get relevant stacktrace info for app using the Triage library"
 
   # Using a macro so that this helper function isn't part of the stacktrace
   defmacro calling_stacktrace do
     quote do
       {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 
-      # Skip `Process.info` line and the `Errors.log` line:
+      # Skip `Process.info` line and the `Triage.log` line:
       Enum.drop(stacktrace, 2)
     end
   end

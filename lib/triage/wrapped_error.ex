@@ -1,5 +1,5 @@
-defmodule Errors.WrappedError do
-  alias Errors.Stacktrace
+defmodule Triage.WrappedError do
+  alias Triage.Stacktrace
 
   @enforce_keys [:result, :reason]
   defexception [:result, :reason, :context, :stacktrace, :metadata, :message]
@@ -19,7 +19,7 @@ defmodule Errors.WrappedError do
           reason
 
         other ->
-          raise ArgumentError, "Errors wrap either :error or {:error, _}, got: #{inspect(other)}"
+          raise ArgumentError, "Triage wrap either :error or {:error, _}, got: #{inspect(other)}"
       end
 
     exception =
@@ -77,7 +77,7 @@ defmodule Errors.WrappedError do
         "    [CONTEXT] #{parts_string}"
       end)
 
-    message = Errors.result_details(List.last(errors).result).message
+    message = Triage.result_details(List.last(errors).result).message
 
     "#{message}\n#{context_string}"
   end
@@ -105,7 +105,7 @@ defmodule Errors.WrappedError do
         "    [CONTEXT] #{parts_string}"
       end)
 
-    message = Errors.result_details(List.last(errors).result).message
+    message = Triage.result_details(List.last(errors).result).message
 
     "#{message}\n#{context_string}"
   end
@@ -139,22 +139,22 @@ defmodule Errors.WrappedError do
   end
 end
 
-# defimpl Inspect, for: Errors.WrappedError do
+# defimpl Inspect, for: Triage.WrappedError do
 #   import Inspect.Algebra
 #
 #   def inspect(%{reason: reason} = wrapped_error, opts) do
-#     %{mod: mod, message: message} = Errors.result_details(reason)
+#     %{mod: mod, message: message} = Triage.result_details(reason)
 #
 #     {concat([mod, ": ", message]), opts}
 #   end
 # end
 
 if Code.ensure_loaded?(JSON.Encoder) do
-  defimpl JSON.Encoder, for: Errors.WrappedError do
+  defimpl JSON.Encoder, for: Triage.WrappedError do
     def encode(error, encoder) do
-      errors = Errors.WrappedError.unwrap(error)
+      errors = Triage.WrappedError.unwrap(error)
 
-      message = Errors.result_details(List.last(errors).result).message
+      message = Triage.result_details(List.last(errors).result).message
 
       encoder.(%{
         message: message,
@@ -165,11 +165,11 @@ if Code.ensure_loaded?(JSON.Encoder) do
 end
 
 # if Code.ensure_loaded?(Jason.Encoder) do
-defimpl Jason.Encoder, for: Errors.WrappedError do
+defimpl Jason.Encoder, for: Triage.WrappedError do
   def encode(error, opts) do
-    errors = Errors.WrappedError.unwrap(error)
+    errors = Triage.WrappedError.unwrap(error)
 
-    message = Errors.result_details(List.last(errors).result).message
+    message = Triage.result_details(List.last(errors).result).message
 
     Jason.Encode.map(
       %{
@@ -183,11 +183,11 @@ end
 
 # end
 
-defimpl Inspect, for: Errors.WrappedError do
+defimpl Inspect, for: Triage.WrappedError do
   import Inspect.Algebra
 
   def inspect(wrapped_error, opts) do
-    errors = Errors.WrappedError.unwrap(wrapped_error)
+    errors = Triage.WrappedError.unwrap(wrapped_error)
 
     contexts_doc =
       errors
@@ -195,10 +195,10 @@ defimpl Inspect, for: Errors.WrappedError do
       |> Enum.intersperse(" => ")
       |> concat()
 
-    message = Errors.result_details(List.last(errors).result).message
+    message = Triage.result_details(List.last(errors).result).message
 
     # {doc, opts} = to_doc_with_opts(MapSet.to_list(map_set), opts)
 
-    {concat(["Errors.WrappedError<<", contexts_doc, " | ", message, ">>"]), opts}
+    {concat(["Triage.WrappedError<<", contexts_doc, " | ", message, ">>"]), opts}
   end
 end

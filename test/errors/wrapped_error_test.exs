@@ -1,6 +1,6 @@
-defmodule Errors.WrappedErrorTest do
+defmodule Triage.WrappedErrorTest do
   use ExUnit.Case
-  alias Errors.WrappedError
+  alias Triage.WrappedError
 
   import ExUnit.CaptureLog
 
@@ -71,7 +71,7 @@ defmodule Errors.WrappedErrorTest do
     test "fails with other inputs" do
       assert_raise(
         ArgumentError,
-        "Errors wrap either :error or {:error, _}, got: :ok",
+        "Triage wrap either :error or {:error, _}, got: :ok",
         fn ->
           WrappedError.new(:ok, "fobbing a widget", [])
         end
@@ -79,14 +79,14 @@ defmodule Errors.WrappedErrorTest do
 
       assert_raise(
         ArgumentError,
-        "Errors wrap either :error or {:error, _}, got: {:ok, 123}",
+        "Triage wrap either :error or {:error, _}, got: {:ok, 123}",
         fn ->
           WrappedError.new({:ok, 123}, "fobbing a widget", [])
         end
       )
 
       assert_raise ArgumentError,
-                   "Errors wrap either :error or {:error, _}, got: :some_error",
+                   "Triage wrap either :error or {:error, _}, got: :some_error",
                    fn ->
                      WrappedError.new(:some_error, "fobbing a widget", [])
                    end
@@ -121,7 +121,7 @@ defmodule Errors.WrappedErrorTest do
         )
 
       assert Exception.message(wrapped_error) ==
-               "{:error, #Errors.WrappedErrorTest.TestWithMessageKeyError<...>} (message: the message which was set)\n    [CONTEXT] fobbing a widget"
+               "{:error, #Triage.WrappedErrorTest.TestWithMessageKeyError<...>} (message: the message which was set)\n    [CONTEXT] fobbing a widget"
     end
 
     defmodule TestWithMessageCallbackError do
@@ -140,7 +140,7 @@ defmodule Errors.WrappedErrorTest do
         )
 
       assert Exception.message(wrapped_error) ==
-               "{:error, #Errors.WrappedErrorTest.TestWithMessageCallbackError<status: :unknown, ...>} (message: 🤷)\n    [CONTEXT] fobbing a widget"
+               "{:error, #Triage.WrappedErrorTest.TestWithMessageCallbackError<status: :unknown, ...>} (message: 🤷)\n    [CONTEXT] fobbing a widget"
     end
 
     test "nested reason is exception with message callback" do
@@ -159,7 +159,7 @@ defmodule Errors.WrappedErrorTest do
         )
 
       assert Exception.message(wrapped_error) ==
-               "{:error, #Errors.WrappedErrorTest.TestWithMessageCallbackError<status: :unknown, ...>} (message: 🤷)\n    [CONTEXT] higher up\n    [CONTEXT] lower down"
+               "{:error, #Triage.WrappedErrorTest.TestWithMessageCallbackError<status: :unknown, ...>} (message: 🤷)\n    [CONTEXT] higher up\n    [CONTEXT] lower down"
     end
 
     defmodule TestWithoutMessageError do
@@ -177,11 +177,11 @@ defmodule Errors.WrappedErrorTest do
       log =
         capture_log([level: :warning], fn ->
           assert Exception.message(wrapped_error) ==
-                   "{:error, #Errors.WrappedErrorTest.TestWithoutMessageError<status: :unknown, ...>} (message: %Errors.WrappedErrorTest.TestWithoutMessageError{status: :unknown})\n    [CONTEXT] fobbing a widget"
+                   "{:error, #Triage.WrappedErrorTest.TestWithoutMessageError<status: :unknown, ...>} (message: %Triage.WrappedErrorTest.TestWithoutMessageError{status: :unknown})\n    [CONTEXT] fobbing a widget"
         end)
 
       assert log =~
-               "Exception module `Errors.WrappedErrorTest.TestWithoutMessageError` doesn't have a `message` key or implement a `message/1` callback"
+               "Exception module `Triage.WrappedErrorTest.TestWithoutMessageError` doesn't have a `message` key or implement a `message/1` callback"
     end
   end
 end

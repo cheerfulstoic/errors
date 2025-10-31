@@ -1,4 +1,4 @@
-defmodule Errors.JSON do
+defmodule Triage.JSON do
   @moduledoc """
     Helpers for JSON output
 
@@ -21,22 +21,22 @@ defmodule Errors.JSON do
   end
 end
 
-defimpl Errors.JSON.Shrink, for: Errors.WrappedError do
+defimpl Triage.JSON.Shrink, for: Triage.WrappedError do
   def shrink(exception) do
-    errors = Errors.WrappedError.unwrap(exception)
+    errors = Triage.WrappedError.unwrap(exception)
     last_error = List.last(errors)
 
     contexts =
       Enum.map(errors, fn error ->
         %{
-          label: Errors.JSON.Shrink.shrink(error.context),
+          label: Triage.JSON.Shrink.shrink(error.context),
           stacktrace: format_stacktrace(error.stacktrace),
-          metadata: Errors.JSON.Shrink.shrink(error.metadata)
+          metadata: Triage.JSON.Shrink.shrink(error.metadata)
         }
       end)
 
     %{
-      __root_reason__: Errors.JSON.Shrink.shrink(last_error.reason),
+      __root_reason__: Triage.JSON.Shrink.shrink(last_error.reason),
       __contexts__: contexts
     }
   end
@@ -51,7 +51,7 @@ defimpl Errors.JSON.Shrink, for: Errors.WrappedError do
 end
 
 # Fallback to Any so that apps can implement overrides
-defimpl Errors.JSON.Shrink, for: Any do
+defimpl Triage.JSON.Shrink, for: Any do
   def shrink(exception) when is_exception(exception) do
     exception
     |> Map.from_struct()
@@ -65,7 +65,7 @@ defimpl Errors.JSON.Shrink, for: Any do
     map =
       struct
       |> Map.from_struct()
-      |> Errors.JSON.Shrink.shrink()
+      |> Triage.JSON.Shrink.shrink()
 
     if map_size(map) > 0 do
       map
@@ -81,7 +81,7 @@ defimpl Errors.JSON.Shrink, for: Any do
     |> Enum.map(fn
       {key, value}
       when is_map(value) or is_list(value) or is_tuple(value) or is_function(value) ->
-        {key, Errors.JSON.Shrink.shrink(value)}
+        {key, Triage.JSON.Shrink.shrink(value)}
 
       {key, value} ->
         {key, value}
@@ -108,9 +108,9 @@ defimpl Errors.JSON.Shrink, for: Any do
     if length(list) > 0 and Keyword.keyword?(list) do
       list
       |> Enum.into(%{})
-      |> Errors.JSON.Shrink.shrink()
+      |> Triage.JSON.Shrink.shrink()
     else
-      Enum.map(list, &Errors.JSON.Shrink.shrink(&1))
+      Enum.map(list, &Triage.JSON.Shrink.shrink(&1))
     end
   end
 
