@@ -1,5 +1,7 @@
 defmodule Triage.Stacktrace do
-  @moduledoc "Tools to get relevant stacktrace info for app using the Triage library"
+  @moduledoc false
+
+  # Tools to get relevant stacktrace info for app using the Triage library
 
   # Using a macro so that this helper function isn't part of the stacktrace
   defmacro calling_stacktrace do
