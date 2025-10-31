@@ -7,6 +7,8 @@ defmodule Triage.JSON do
   # terms into a JSON-friendly format
 
   defprotocol Shrink do
+    @moduledoc false
+
     @fallback_to_any true
 
     # This function exists to reduce the data that is sent out (logs/telemetry) to
