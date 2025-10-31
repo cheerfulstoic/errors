@@ -8,8 +8,7 @@ defmodule Triage.MixProject do
       app: :triage,
       version: "0.2.0",
       elixir: "~> 1.15",
-      # TODO
-      description: "... TODO ...",
+      description: "Making dealing with results (ok/error) easy",
       licenses: ["MIT"],
       package: package(),
       start_permanent: Mix.env() == :prod,
