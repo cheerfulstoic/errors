@@ -12,7 +12,7 @@ defmodule Triage.Stacktrace do
   end
 
   def most_relevant_entry(stacktrace) do
-    if app = Application.get_env(:errors, :app) do
+    if app = Application.get_env(:triage, :app) do
       index =
         Enum.find_index(stacktrace, fn {mod, _, _, _} ->
           match?({:ok, ^app}, :application.get_application(mod))

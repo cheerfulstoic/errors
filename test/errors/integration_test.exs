@@ -3,12 +3,12 @@ defmodule Triage.IntegrationTest do
   import ExUnit.CaptureLog
 
   setup do
-    Application.delete_env(:errors, :app)
-    Application.delete_env(:errors, :log_adapter)
+    Application.delete_env(:triage, :app)
+    Application.delete_env(:triage, :log_adapter)
 
     on_exit(fn ->
-      Application.delete_env(:errors, :app)
-      Application.delete_env(:errors, :log_adapter)
+      Application.delete_env(:triage, :app)
+      Application.delete_env(:triage, :log_adapter)
     end)
 
     :ok
@@ -242,7 +242,7 @@ defmodule Triage.IntegrationTest do
   #
   #   \[CONTEXT\] :erlang\.binary_to_integer/1>
   #
-  #   Application.put_env(:errors, :log_adapter, Triage.LogAdapter.JSON)
+  #   Application.put_env(:triage, :log_adapter, Triage.LogAdapter.JSON)
   #
   #   log =
   #     capture_log([level: :error], fn ->
