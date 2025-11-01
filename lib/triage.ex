@@ -267,36 +267,6 @@ defmodule Triage do
     result
   end
 
-  # TODO TODO: Need to figure out `map!` / `map` functions
-  #
-  # def map!(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map!/2")
-  #
-  # def map!({:ok, enumerable}, func) do
-  #   Enum.map(enumerable, &then!({:ok, &1}, func))
-  # end
-  #
-  # def map!(:error, _), do: :error
-  # def map!({:error, _} = error, _), do: error
-  #
-  # def map!(result, _) do
-  #   raise ArgumentError,
-  #         "Argument must be {:ok, _} / {:error, _} / :error, got: #{inspect(result)}"
-  # end
-  #
-  # def map(:ok, _), do: raise(ArgumentError, "Cannot pass :ok to map/2")
-  #
-  # def map({:ok, enumerable}, func) do
-  #   Enum.map(enumerable, &Triage.then({:ok, &1}, func))
-  # end
-  #
-  # def map(:error, _), do: :error
-  # def map({:error, _} = error, _), do: error
-  #
-  # def map(result, _) do
-  #   raise ArgumentError,
-  #         "Argument must be {:ok, _} / {:error, _} / :error, got: #{inspect(result)}"
-  # end
-
   @doc """
   Maps a function over an enumerable, collecting successful values and short-circuiting on the first error.
 
@@ -575,13 +545,19 @@ defmodule Triage do
   Generates a user-friendly error message from various error types.
 
   Converts errors into human-readable messages suitable for displaying to end users.
-  For wrapped errors, it unwraps the error chain and includes context information in the message.
-  For exceptions and unknown error types, it generates a unique error code and logs
-  the full error details for debugging.
+
+  When the `reason` is a string, the string error message is returned.
+
+  When the `reason` is `t:Triage.WrappedError.t/0` it unwraps the error chain and includes context information in the message.
+
+  For exceptions and unknown error types, it
+   * generates a unique error code
+   * logs the error code with full error details
+   * returns a generic error to the user with the error code that the user can report
 
   ## Parameters
 
-    * `reason` - The error to convert (string, exception, `%Triage.WrappedError{}`, or any value)
+    * `reason` - The error to convert (string, exception, `%Triage.WrappedError{}`, or any other value)
 
   ## Examples
 
@@ -632,6 +608,9 @@ defmodule Triage do
 
   Takes a result and logs it using the configured log adapter. By default, only
   errors are logged. Use `mode: :all` to log both successes and errors.
+
+  See [this guide](logging-json.html) for information about
+  logging with JSON
 
   ## Parameters
 
