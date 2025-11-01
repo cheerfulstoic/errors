@@ -74,11 +74,11 @@ Any metadata given to `log` is also assigned to the [Logger metadata](https://he
 
 ### Control Flow
 
-...IN PROGRESS...
+...EXAMPLES COMING SOON...SEE [THE DOCS](https://hexdocs.pm/triage/) FOR NOW...
 
 ### Enumeration
 
-...IN PROGRESS...
+...EXAMPLES COMING SOON...SEE [THE DOCS](https://hexdocs.pm/triage/) FOR NOW...
 
 ## Installation
 
