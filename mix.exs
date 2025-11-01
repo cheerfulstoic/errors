@@ -46,6 +46,8 @@ defmodule Triage.MixProject do
         "guides/introduction/Control Flow.md",
         "guides/introduction/Enumerating Errors.md",
         "guides/introduction/Comparison to with.md",
+        "guides/introduction/Logging JSON.md",
+        "guides/introduction/Configuration.md",
         "guides/examples/find_working_url.md",
         "CHANGELOG.md"
       ],

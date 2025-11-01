@@ -1,9 +1,9 @@
 
 THIS PAGE UNDER CONSTRUCTION!
 
-Errors.map??
+Triage.map??
 
-Errors.map_until
+Triage.map_until
 
-Errors.all => :ok | :error | {:error, term()} (doesn't return results)
-Errors.find_value
+Triage.all => :ok | :error | {:error, term()} (doesn't return results)
+Triage.find_value

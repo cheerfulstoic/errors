@@ -1,7 +1,5 @@
 # Contexts
 
-
-
 ## Context Wrapping
 
 The `wrap_context/3` function adds context (a label + optional metadata) to any errors which come out of a piece of code. This is especially useful for understanding where a failure came from:
@@ -15,11 +13,11 @@ defmodule Users do
          {:ok, changeset} <- User.changeset(%User{}, params)
       Repo.insert(changeset)
     end
-    |> Errors.wrap_context("create user", %{email: params[:email]})
+    |> Triage.wrap_context("create user", %{email: params[:email]})
   end
 end
 
-# When an error occurs, you get a `reason` which is a `Errors.WrappedError` exception struct.
+# When an error occurs, you get a `reason` which is a `Triage.WrappedError` exception struct.
 {:error, reason} = Users.create_user(%{name: "Alice", email: "alice@example.com"})
 
 # `Exception.message/1` is a standard Elixir function for getting message strings from exceptions
@@ -28,7 +26,7 @@ Exception.message(reason)
 #        [CONTEXT] lib/my_app/users.ex:10: create user
 ```
 
-See the description of `Errors.user_message` below for how wrapped errors can be useful without you needing to work with them directly.
+See the description of `Triage.user_message` below for how wrapped errors can be useful without you needing to work with them directly.
 
 ## Logging
 
@@ -41,9 +39,9 @@ defmodule API.UserController do
   def create(conn, params) do
     Users.create_user(params)
     # Only logs if there's an error
-    |> Errors.log()
+    |> Triage.log()
     # You can also pass :errors (the default)
-    # |> Errors.log(:errors)
+    # |> Triage.log(:errors)
     |> case do
       {:ok, user} ->
         conn
@@ -85,7 +83,7 @@ defmodule MyApp.OrderProcessor do
          {:ok, charge} <- charge_payment(payment_method, order.amount) do
       {:ok, charge}
     end
-    |> Errors.wrap_context("process payment", %{order_id: order.id, order_amount: order.amount})
+    |> Triage.wrap_context("process payment", %{order_id: order.id, order_amount: order.amount})
   end
   # ...
 end
@@ -94,7 +92,7 @@ defmodule MyApp.OrderService do
   def complete_order(order_id) do
     fetch_order(order_id)
     |> MyApp.OrderProcessor.process_payment(order)
-    |> Errors.wrap_context("complete order")
+    |> Triage.wrap_context("complete order")
   end
   # ...
 end
@@ -107,7 +105,7 @@ def show(conn, %{"order_id" => order_id}) do
   order_id = String.to_integer(order_id)
 
   MyApp.complete_order(order_id)
-  |> Errors.log()
+  |> Triage.log()
   # ...
 
 # Log output:
@@ -134,7 +132,7 @@ defmodule MyAppWeb.UserController do
       {:error, reason} ->
         conn
         |> put_status(400)
-        |> json(%{error: Errors.user_message(reason)})
+        |> json(%{error: Triage.user_message(reason)})
     end
     # ...
 ```
@@ -152,7 +150,6 @@ In this case, you could imagine that `MyApp.Users.create_user(params)` could ret
 {:error, %Jason.DecodeError{...}
 ```
 
-`Errors.user_message` always turns the `reason` into a string and does it's best to extract the appropriate data for a human-readable string.
+`Triage.user_message` always turns the `reason` into a string and does it's best to extract the appropriate data for a human-readable string.
 
-Additionally, if you use `Errors.wrap_context`, additional information from the `WrappedError` will be available to help describe the error.
-
+Additionally, if you use `Triage.wrap_context`, additional information from the `WrappedError` will be available to help describe the error.

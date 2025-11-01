@@ -7,7 +7,7 @@ Sometimes you have an result and you want to transform it:
 * Transforming an error result
 * Ignoring an error result (e.g. turning it into a success)
 
-In these cases you can use `Errors.then`, `Errors.then!` to handle ok results and `Errors.handle` to handle error results.
+In these cases you can use `Triage.then`, `Triage.then!` to handle ok results and `Triage.handle` to handle error results.
 
 ## `then` / `then!`
 
@@ -19,7 +19,7 @@ Takes a zero-arity function and executes it.  The function can return `:ok`, `{:
 
 ```elixir
 # order_id is defined / passed in
-Errors.then!(fn -> fetch_order_from_api(order_id) end)
+Triage.then!(fn -> fetch_order_from_api(order_id) end)
 ```
 
 ### `then!/2` - Chaining operations + allowing exceptions to raise
@@ -29,14 +29,14 @@ Takes a result and a function, executing the function only if the result is succ
 ```elixir
 # Example: User registration pipeline
 fetch_order_from_api(order_id)
-|> Errors.then!(&validate_order/1)
-|> Errors.then!(fn order -> change_for_order(order, user.payment_info) end)
+|> Triage.then!(&validate_order/1)
+|> Triage.then!(fn order -> change_for_order(order, user.payment_info) end)
 # => {:ok, user} if all thens succeed
 # If any then returns an error, further thens are ignored and the error is passed through
 
 # When given :ok, passes nil to the function
 # Previous then returns `:ok`
-|> Errors.then!(fn nil -> send_notification() end)
+|> Triage.then!(fn nil -> send_notification() end)
 # => {:ok, notification_result}
 ```
 
@@ -47,16 +47,16 @@ Behaves like `then!/2` but catches exceptions and wraps them in a `WrappedError`
 ```elixir
 # Example: Processing an API response
 {:ok, response}
-|> Errors.then(fn response -> Jason.decode!(response.body) end)  # Might raise
-|> Errors.then(&validate_schema/1)
-|> Errors.then(&transform_data/1)
+|> Triage.then(fn response -> Jason.decode!(response.body) end)  # Might raise
+|> Triage.then(&validate_schema/1)
+|> Triage.then(&transform_data/1)
 # => {:ok, transformed_data}
 
 # Catches exceptions during parsing
 {:ok, config_string}
-|> Errors.then(&String.to_integer/1)  # Raises if not a valid integer
-|> Errors.then(&update_config/1)      # Never called if parsing raises
-|> Errors.log()
+|> Triage.then(&String.to_integer/1)  # Raises if not a valid integer
+|> Triage.then(&update_config/1)      # Never called if parsing raises
+|> Triage.log()
 ```
 
 Log output when String.to_integer/1 raises:
@@ -77,27 +77,27 @@ Log output when String.to_integer/1 raises:
 
 ## `handle`
 
-The `Errors.handle` function takes in a result uses a callback function to determine how error results should be handled, passing ok results through unchanged.
+The `Triage.handle` function takes in a result uses a callback function to determine how error results should be handled, passing ok results through unchanged.
 
 ```elixir
 Jason.decode(string)
 # Jason returns a `Jason.DecodeError` exception struct
 # Here we call Elixir's `Exception.message/1` to turn it into a string
-|> Errors.handle(fn error -> Exception.message(error) end)
+|> Triage.handle(fn error -> Exception.message(error) end)
 ```
 
-You can use `Errors.handle` to transform the error based on pattern matching:
+You can use `Triage.handle` to transform the error based on pattern matching:
 
 ```elixir
 HTTPoison.get(url)
-|> Errors.then(fn
+|> Triage.then(fn
   %HTTPoison.Response{status_code: 200, body: body} ->
     body
 
   %HTTPoison.Response{status_code: 404, body: body} ->
     {:error, "Server result not found"}
 end)
-|> Errors.handle(fn
+|> Triage.handle(fn
     %HTTPoison.Error{reason: :nxdomain} ->
       "Server domain not found"
 
@@ -113,5 +113,5 @@ Or you can ignore the error and return a success:
 
 ```elixir
 Jason.decode(string)
-|> Errors.handle(fn _ -> {:ok, @default_result} end)
+|> Triage.handle(fn _ -> {:ok, @default_result} end)
 ```
