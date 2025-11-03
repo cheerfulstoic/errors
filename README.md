@@ -72,6 +72,10 @@ def show(conn, %{"order_id" => order_id}) do
 
 Any metadata given to `log` is also assigned to the [Logger metadata](https://hexdocs.pm/logger/Logger.html#module-metadata) in addition to being outputted.
 
+Make sure to see the [Contexts section of the docs](https://hexdocs.pm/triage/contexts.html) for more information.
+
+<https://hexdocs.pm/triage/contexts.html>
+
 ### Enumeration
 
 `triage` has a set of functions to help when you have a series of step which might succeed or fail.  As an example, you may want to build up a list, but return an error if anything fails.
