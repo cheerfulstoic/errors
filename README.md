@@ -76,9 +76,9 @@ The output can be as simple as this in the case of an atom given as the error re
 But if `Triage.wrap_context` is used, we can get even more details out:
 
 ```
-# [error] [RESULT] lib/my_app/order_service.ex:15: {:error, :payment_declined}
-# [CONTEXT] lib/my_app/order_service.ex:15: complete order
-# [CONTEXT] lib/my_app/order_processor.ex:8: process payment | %{order_id: 12345, amount: 99.99}
+[error] [RESULT] lib/my_app/order_service.ex:15: {:error, :payment_declined}
+  [CONTEXT] lib/my_app/order_service.ex:15: complete order
+  [CONTEXT] lib/my_app/order_processor.ex:8: process payment | %{order_id: 12345, amount: 99.99}
 ```
 
 Note that if you'd prefer to output JSON logs, there is some [information in the docs](https://hexdocs.pm/triage/logging-json.html)
