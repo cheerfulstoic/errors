@@ -74,8 +74,6 @@ Any metadata given to `log` is also assigned to the [Logger metadata](https://he
 
 Make sure to see the [Contexts section of the docs](https://hexdocs.pm/triage/contexts.html) for more information.
 
-<https://hexdocs.pm/triage/contexts.html>
-
 ### Enumeration
 
 `triage` has a set of functions to help when you have a series of step which might succeed or fail.  As an example, you may want to build up a list, but return an error if anything fails.
@@ -104,7 +102,34 @@ For more functions and examples, see the [Enumerating Errors section of the docs
 
 ### Control Flow
 
-...EXAMPLES COMING SOON...SEE [THE DOCS](https://hexdocs.pm/triage/) FOR NOW...
+`triage`'s two control flow tools (`then` and `handle`) can both be shown via an HTTP request example:
+
+```elixir
+HTTPoison.get(url)
+|> Triage.then(fn
+  %HTTPoison.Response{status_code: 200, body: body} ->
+    body
+
+  %HTTPoison.Response{status_code: 404, body: body} ->
+    {:error, "Server result not found"}
+end)
+|> Triage.handle(fn
+    %HTTPoison.Error{reason: :nxdomain} ->
+      "Server domain not found"
+
+    %HTTPoison.Error{reason: :econnrefused}
+      "Server connection refused"
+
+    %HTTPoison.Error{reason: reason}
+      "Unexpected error connecting to server: #{inspect(reason)}"
+end)
+```
+
+The `Triage.then` function works on `:ok` results, ignoring errors.  Values that are returned from the callback are automatically wrapped in an `{:ok, _}` tuple, though any `:error` or `{:error, term()}` returned will be returned as an error.
+
+The `Triage.handle` function is the opposite: working on `:error` reasons and returning new reasons to be wrapped in an `{:error, _}` tuple.  If an `:ok` or `{:ok, _}` result is returned, then the error is ignored and `Triage.handle` will return that success.
+
+Make sure to see the [Control Flow section of the docs](https://hexdocs.pm/triage/control-flow.html) for more information.
 
 ## Installation
 
