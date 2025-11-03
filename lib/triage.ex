@@ -10,6 +10,7 @@ defmodule Triage do
 
   @type result() :: :ok | :error | {:ok, term()} | {:error, term()}
 
+  @doc group: "Functions > Contexts"
   @doc """
   Wraps `t:result/0` with additional context information, leaving `:ok` results unchanged.
 
@@ -18,6 +19,9 @@ defmodule Triage do
 
   If the second argument is a string, the context is set. If the second argument is a
   keyword list or a map the metadata is set.  The arity 3 version allows setting both.
+
+  The `log/2` and `user_message/1` functions support `WrappedError` results. See their
+  docs for more details
 
   ## Examples
 
@@ -54,6 +58,10 @@ defmodule Triage do
     wrap_context(result, nil, metadata)
   end
 
+  @doc group: "Functions > Contexts"
+  @doc """
+  Wrap errors from a result with both a context string and metadata. See `wrap_context/2`
+  """
   def wrap_context(result, context, meta \\ %{})
 
   def wrap_context(:ok, _context, _meta), do: :ok
@@ -74,6 +82,7 @@ defmodule Triage do
     {:error, WrappedError.new({:error, reason}, context, stacktrace, metadata)}
   end
 
+  @doc group: "Functions > Control Flow"
   @doc """
   Executes a function that returns a result tuple, without exception handling.
 
@@ -107,6 +116,7 @@ defmodule Triage do
     end
   end
 
+  @doc group: "Functions > Control Flow"
   @doc """
   Executes a function with a previous result value, without exception handling.
 
@@ -156,6 +166,7 @@ defmodule Triage do
   def then!({:error, _} = result, _func), do: result
   def then!(other, _), do: validate_result!(other)
 
+  @doc group: "Functions > Control Flow"
   @doc """
   Executes a function that returns a result tuple, with exception handling.
 
@@ -185,6 +196,7 @@ defmodule Triage do
     end
   end
 
+  @doc group: "Functions > Control Flow"
   @doc """
   Executes a function with a previous result value, with exception handling.
 
@@ -216,6 +228,7 @@ defmodule Triage do
     end
   end
 
+  @doc group: "Functions > Control Flow"
   @doc """
   For dealing with `:error` cases, passing `:ok` results through unchanged.
 
@@ -267,6 +280,7 @@ defmodule Triage do
     result
   end
 
+  @doc group: "Functions > Enumeration"
   @doc """
   Maps a function over an enumerable, collecting successful values and short-circuiting on the first error.
 
@@ -320,6 +334,7 @@ defmodule Triage do
       result
   end
 
+  @doc group: "Functions > Enumeration"
   @doc """
   Finds the first successful result from applying a function to enumerable elements.
 
@@ -371,6 +386,7 @@ defmodule Triage do
       result
   end
 
+  @doc group: "Functions > Enumeration"
   @doc """
   Validates that all elements in an enumerable pass a validation function.
 
@@ -541,6 +557,7 @@ defmodule Triage do
     end
   end
 
+  @doc group: "Functions > Helpers"
   @doc """
   Generates a user-friendly error message from various error types.
 
@@ -603,6 +620,7 @@ defmodule Triage do
     "There was an error. Refer to code: #{error_code}"
   end
 
+  @doc group: "Functions > Helpers"
   @doc """
   Logs a result tuple and returns it unchanged.
 
@@ -651,6 +669,7 @@ defmodule Triage do
     result
   end
 
+  @doc group: "Functions > Helpers"
   @doc """
   Checks if a result is a success (`:ok` or `{:ok, term()}`).
 
@@ -677,6 +696,7 @@ defmodule Triage do
   def ok?({:error, _}), do: false
   def ok?(result), do: validate_result!(result)
 
+  @doc group: "Functions > Helpers"
   @doc """
   Checks if a result is an error (`:error` or `{:error, term()}`).
 

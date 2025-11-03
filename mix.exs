@@ -42,9 +42,10 @@ defmodule Triage.MixProject do
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       extras: [
         # "guides/introduction/Getting Started.md",
+        "README.md",
         "guides/introduction/Contexts.md",
-        "guides/introduction/Control Flow.md",
         "guides/introduction/Enumerating Errors.md",
+        "guides/introduction/Control Flow.md",
         "guides/introduction/Comparison to with.md",
         "guides/introduction/Logging JSON.md",
         "guides/introduction/Configuration.md",
@@ -53,9 +54,9 @@ defmodule Triage.MixProject do
       ],
       groups_for_extras: [
         Introduction: ~r/guides\/introduction\/.?/,
-        "Real-life Examples": ~r/guides\/examples\/.?/
-      ]
-      # main: "Getting Started",
+        "More Complicated Examples": ~r/guides\/examples\/.?/
+      ],
+      main: "README"
       # api_reference: false
     ]
   end

@@ -72,11 +72,33 @@ def show(conn, %{"order_id" => order_id}) do
 
 Any metadata given to `log` is also assigned to the [Logger metadata](https://hexdocs.pm/logger/Logger.html#module-metadata) in addition to being outputted.
 
-### Control Flow
-
-...EXAMPLES COMING SOON...SEE [THE DOCS](https://hexdocs.pm/triage/) FOR NOW...
-
 ### Enumeration
+
+`triage` has a set of functions to help when you have a series of step which might succeed or fail.  As an example, you may want to build up a list, but return an error if anything fails.
+
+```elixir
+  defp validate_each_metric(metrics, query) do
+    Enum.reduce_while(metrics, {:ok, []}, fn metric, {:ok, acc} ->
+      case validate_metric(metric, query) do
+        {:ok, metric} -> {:cont, {:ok, acc ++ [metric]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+```
+
+The `Triage.map_unless` function is one tool available:
+
+```elixir
+  defp validate_each_metric(metrics, query) do
+    # Returns {:ok, [...]} where the original returned just [...]
+    Triage.map_unless(metrics, & validate_metric(&1, query))
+  end
+```
+
+For more functions and examples, see the [Enumerating Errors section of the docs](https://hexdocs.pm/triage/enumerating-errors.html).
+
+### Control Flow
 
 ...EXAMPLES COMING SOON...SEE [THE DOCS](https://hexdocs.pm/triage/) FOR NOW...
 
