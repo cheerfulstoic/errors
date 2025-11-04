@@ -54,7 +54,7 @@ But an error wrapped with a context isn't so useful by itself.  Your code can lo
 
 ### Output
 
-Error results that you get back can be a mess. Often when you get an error tuple, it comes back as the result of a tree of nested calls and the reason value could be of many types.  So it's useful to have tools which let you not worry about it so much. Below is an example of using `Triage.log` and `Triage.user_message` in a Phoenix controller:
+Error results that you get back can be a mess. Often when you get an error tuple it comes back from a tree of nested calls and the reason value could be of many types (string, atom, etc...).  So it's useful to have tools which let you not worry about it so much. Below is an example of using `Triage.log` to output logs:
 
 ```elixir
 def show(conn, %{"order_id" => order_id}) do
@@ -65,7 +65,7 @@ def show(conn, %{"order_id" => order_id}) do
   # ...
 ```
 
-By default `Triage.log` will only output error cases, so if this case is important we can have a log of how it went wrong. Also note that any metadata given to `log` is also assigned to the [Logger metadata](https://hexdocs.pm/logger/Logger.html#module-metadata) in addition to being outputted (helpful for filtering logs).
+By default `Triage.log` will only output error cases (pass in `:all` to log `:ok` results as well), so if this case is important we can have a log of how it went wrong. Also note that any metadata given to `log` is also assigned to the [Logger metadata](https://hexdocs.pm/logger/Logger.html#module-metadata) in addition to being outputted (helpful for filtering logs).
 
 The output can be as simple as this in the case of an atom given as the error reason:
 
@@ -82,7 +82,6 @@ But if `Triage.wrap_context` is used, we can get even more details out:
 ```
 
 Note that if you'd prefer to output JSON logs, there is some [information in the docs](https://hexdocs.pm/triage/logging-json.html)
-
 Additionally, the `Triage.user_message` function will extract a message from the error if possible.  If not possible, the user will be given a generic error with a randomly generated short code which can be matched to a log entry with details about the error.
 
 ```elixir
