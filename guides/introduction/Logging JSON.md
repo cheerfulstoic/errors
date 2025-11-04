@@ -19,6 +19,8 @@ config :logger, :default_handler,
     LoggerJSON.Formatters.Basic.new(metadata: [:user_id, :errors_result_details])
 ```
 
+It is recommended to put this in your `config/runtime.exs` under `if config_env() == :prod do` so that you can get more readable logs in `dev` and `test` environments.
+
 If you were to use `Triage.wrap_context("updating user", user_id: 123)`:
 
 With standard logging you'd get `user_id=123` just like if you gave the metadata to `Logger.error` yourself.
