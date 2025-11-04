@@ -24,9 +24,7 @@ See the [Philosophy](https://hexdocs.pm/triage/philosophy.html) section of the d
 
 ### Contexts
 
-When an error is returned (e.g. in a tuple, as opposed to being raised), often that error can be passed up a stack and soon the context of where it came from can be lost. Triage offers a `wrap_context` function to attach a context string and/or metadata to errors via a `WrappedError` exception struct, as well as `log` and `user_message` functions which can take advantage of this extra information to assist debugging.
-
-Note that while the `user_message` function supports turning `WrappedError` structs into useful human-readable strings, it supports giving user error messages for any error tuple.
+When an error is returned (e.g. in a tuple, as opposed to being raised), often that error can be passed up a stack and it becomes unclear where the error came from. Triage offers a `wrap_context` function to attach a context string and/or metadata to errors via a `WrappedError` exception struct.
 
 ```elixir
 defmodule MyApp.OrderProcessor do
