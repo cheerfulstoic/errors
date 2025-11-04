@@ -56,7 +56,7 @@ defmodule Triage.MixProject do
         Introduction: ~r/guides\/introduction\/.?/,
         "More Complicated Examples": ~r/guides\/examples\/.?/
       ],
-      main: "README",
+      main: "readme",
       api_reference: false
     ]
   end
