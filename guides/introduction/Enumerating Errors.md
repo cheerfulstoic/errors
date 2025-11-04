@@ -9,7 +9,7 @@ Triage.map_until
 Triage.all => :ok | :error | {:error, term()} (doesn't return results)
 Triage.find_value
 
-## `map_unless`
+## `map_if`
 
 [source for original example](https://github.com/plausible/analytics/blob/64aa2434e9b0e5836f5a47a9ec31bf57cd9da4d4/lib/plausible_web/controllers/api/external_stats_controller.ex#L141-L148)
 
@@ -26,16 +26,16 @@ Triage.find_value
 
 Using `Enum.reduce_while` is a common pattern when operating over a set of [results](`t:Triage.result/0`).  In this case `validate_each_metric` returns a list if everything is successful while returning the first error if nothing is successful.
 
-We can use the `Triage.map_unless` function to simplify this logic:
+We can use the `Triage.map_if` function to simplify this logic:
 
 ```elixir
   defp validate_each_metric(metrics, query) do
     # Returns {:ok, [...]} where the original returned just [...]
-    Triage.map_unless(metrics, & validate_metric(&1, query))
+    Triage.map_if(metrics, & validate_metric(&1, query))
   end
 ```
 
-In addition to simplifying the code, it's more obvious at first glance what is happening because things have been stripped down to the most important details (`map_unless` is being used on `metrics`, using `validate_metric`).
+In addition to simplifying the code, it's more obvious at first glance what is happening because things have been stripped down to the most important details (`map_if` is being used on `metrics`, using `validate_metric`).
 
 Also, by using `triage` there is an assurance that we will get a [results](`t:Triage.result/0`).
 

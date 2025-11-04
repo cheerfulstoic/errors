@@ -285,11 +285,11 @@ defmodule Triage do
   Maps a function over an enumerable, collecting successful values and short-circuiting on the first error.
 
   Takes an enumerable or `{:ok, enumerable}` and applies a function to each element.
-  If all callbacks return success with `{:ok, value}`), `map_unless` returns
-  `{:ok, [transformed_values]}`. If any call to the callback returns an error, `map_unless`
+  If all callbacks return success with `{:ok, value}`), `map_if` returns
+  `{:ok, [transformed_values]}`. If any call to the callback returns an error, `map_if`
   immediately stops processing and returns that error.
 
-  If `map_unless` is given an `:error` result for it's first argument that argument is returned
+  If `map_if` is given an `:error` result for it's first argument that argument is returned
   unchanged and the callback is never called.
 
   This is useful when you need all transformations to succeed—if any fail, you don't want
@@ -297,24 +297,24 @@ defmodule Triage do
 
   ## Examples
 
-      iex> Triage.map_unless(xml_docs, & xml_to_json(&1, opts))
+      iex> Triage.map_if(xml_docs, & xml_to_json(&1, opts))
       {:ok, [...]}
 
-      iex> Triage.map_unless(xml_docs, & xml_to_json(&1, opts))
+      iex> Triage.map_if(xml_docs, & xml_to_json(&1, opts))
       {:error, ...}
 
-      iex> Triage.map_unless(:error, fn _ -> <not called> end)
+      iex> Triage.map_if(:error, fn _ -> <not called> end)
       :error
 
-      iex> Triage.map_unless({:error, :not_found}, fn _ -> <not called end)
+      iex> Triage.map_if({:error, :not_found}, fn _ -> <not called end)
       {:error, :not_found}
   """
-  @spec map_unless(result(), (term() -> term())) :: result()
-  def map_unless({:ok, value}, func), do: map_unless(value, func)
-  def map_unless(:error, _), do: :error
-  def map_unless({:error, _} = error, _), do: error
+  @spec map_if(result(), (term() -> term())) :: result()
+  def map_if({:ok, value}, func), do: map_if(value, func)
+  def map_if(:error, _), do: :error
+  def map_if({:error, _} = error, _), do: error
 
-  def map_unless(values, func) do
+  def map_if(values, func) do
     {:ok,
      Enum.map(values, fn value ->
        case func.(value) do
@@ -398,7 +398,7 @@ defmodule Triage do
   If `:error` or `{:error, reason}` are given as the first argument, they are returned
   unchanged. Note that even if callbacks return `{:ok, value}`, the values are discarded
   and only `:ok` is returned — this function is for validation, not transformation.
-  See `map_unless/2` if you need transformation which short-circuits.
+  See `map_if/2` if you need transformation which short-circuits.
 
   This is useful when you need to validate that all items in a collection meet certain
   criteria before proceeding with subsequent operations.

@@ -9,7 +9,7 @@ This package provides three levels of working with errors which are all **usable
 - **Context Wrapping**: Add meaningful context to errors as they bubble up through your application
 - **Result Logging**: Log errors (and optionally successes) with file/line information
 - **User-friendly errors**: Be able to collapse errors into a single user error message
-- **Error enumeration**: functions like `map_unless`, `find_value`, and `all` help deal with enumerations over data where each iteration may succeed or fail.
+- **Error enumeration**: functions like `map_if`, `find_value`, and `all` help deal with enumerations over data where each iteration may succeed or fail.
 - **Error control flow**: `then` and `handle` functions help control and transform results
 
 Design goals:
@@ -118,12 +118,12 @@ See the [Outputs section of the docs](https://hexdocs.pm/triage/outputs.html) fo
   end
 ```
 
-The `Triage.map_unless` function is one tool available:
+The `Triage.map_if` function is one tool available:
 
 ```elixir
   defp validate_each_metric(metrics, query) do
     # Returns {:ok, [...]} where the original returned just [...]
-    Triage.map_unless(metrics, & validate_metric(&1, query))
+    Triage.map_if(metrics, & validate_metric(&1, query))
   end
 ```
 
