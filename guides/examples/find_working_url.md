@@ -39,4 +39,4 @@ Using `find_value`, `then`, and `handle` we can reduce the `reduce_while` boiler
     |> Errors.then(& "https://" <> unsplit_domain(&1, rest))
     |> Errors.handle(fn :no_a_record -> :domain_not_found end)
   end
-
+```

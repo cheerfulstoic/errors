@@ -41,7 +41,6 @@ defmodule Triage.MixProject do
       source_url: @source_url,
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       extras: [
-        # "guides/introduction/Getting Started.md",
         "README.md",
         "guides/introduction/Contexts.md",
         "guides/introduction/Enumerating Errors.md",
@@ -57,8 +56,8 @@ defmodule Triage.MixProject do
         Introduction: ~r/guides\/introduction\/.?/,
         "More Complicated Examples": ~r/guides\/examples\/.?/
       ],
-      main: "README"
-      # api_reference: false
+      main: "README",
+      api_reference: false
     ]
   end
 
