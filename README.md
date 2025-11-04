@@ -14,9 +14,11 @@ This package provides three levels of working with errors which are all **usable
 
 Design goals:
 
-The design goal was to use standard return results and standard tools like Elixir Exception structs so that you never end up with anything out of the ordinary.
+- Standard results (`:ok`, `:error`, `{:ok, term()}`, `{:error, term()}` with only one value in tuples)
+- Avoid macros for easy pick-up-and-use throughout a codebase (i.e. no need for `require`)
+- Variety of small tools which work well together (like UNIX commands)
 
-Make sure to see [the HexDocs](https://hexdocs.pm/triage/) for function descriptions, example use-cases, and the design philosophy.
+See the [Philosophy](https://hexdocs.pm/triage/philosophy.html) section of the docs for more details.
 
 ## Examples
 
@@ -41,7 +43,7 @@ end
 defmodule MyApp.OrderService do
   def complete_order(order_id) do
     fetch_order(order_id)
-    |> MyApp.OrderProcessor.process_payment(order)
+    |> MyApp.OrderProcessor.process_payment()
     |> Triage.wrap_context("complete order")
   end
   # ...
@@ -147,10 +149,10 @@ end)
     %HTTPoison.Error{reason: :nxdomain} ->
       "Server domain not found"
 
-    %HTTPoison.Error{reason: :econnrefused}
+    %HTTPoison.Error{reason: :econnrefused} ->
       "Server connection refused"
 
-    %HTTPoison.Error{reason: reason}
+    %HTTPoison.Error{reason: reason} ->
       "Unexpected error connecting to server: #{inspect(reason)}"
 end)
 ```
@@ -160,6 +162,8 @@ The `Triage.then` function works on `:ok` results, ignoring errors.  Values that
 The `Triage.handle` function is the opposite: working on `:error` reasons and returning new reasons to be wrapped in an `{:error, _}` tuple.  If an `:ok` or `{:ok, _}` result is returned, then the error is ignored and `Triage.handle` will return that success.
 
 Make sure to see the [Control Flow section of the docs](https://hexdocs.pm/triage/control-flow.html) for more information.
+
+Also, many people wonder why they shouldn't just use `with` instead of `then` / `handle`.  There is a [section in the docs](https://hexdocs.pm/triage/comparison-to-with.html) for that too!
 
 ## Installation
 
@@ -173,6 +177,8 @@ def deps do
 end
 ```
 
+For various reasons, `triage` requires at least version `1.15` of Elixir.
+
 ## Usage
 
 See [the docs](https://hexdocs.pm/triage) for detailed information about the different tools available.
@@ -180,10 +186,6 @@ See [the docs](https://hexdocs.pm/triage) for detailed information about the dif
 ## Development
 
 Run tests:
-
-```bash
-mix test
-```
 
 Run tests in watch mode (uses [`mix_test_interactive`](https://hex.pm/packages/mix_test_interactive):
 
