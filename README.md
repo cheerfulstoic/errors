@@ -9,8 +9,8 @@ This package provides three levels of working with errors which are all **usable
 - **Context Wrapping**: Add meaningful context to errors as they bubble up through your application
 - **Result Logging**: Log errors (and optionally successes) with file/line information
 - **User-friendly errors**: Be able to collapse errors into a single user error message
-- **Error control flow**: `then` and `handle` functions help control and transform results
 - **Error enumeration**: functions like `map_unless`, `find_value`, and `all` help deal with enumerations over data where each iteration may succeed or fail.
+- **Error control flow**: `then` and `handle` functions help control and transform results
 
 Design goals:
 
