@@ -4,6 +4,10 @@
 
 ok/error results tend to get returned and used throughout a codebase, so having a limited set of possible combinations means there are fewer patterns to expect.
 
+## Focus on the most useful tools
+
+This library came out of a general desire of seeing the same need for patterns over and over. But in choosing which functions to create, the use-case must exist multiple times in a real-life project. You will find that many of the examples in the docs come from real-life examples.
+
 ## The Principle of Least Surprise
 
 As much as possible tools in the `triage` library should be named according to the [principle of least surprise](https://en.wikipedia.org/wiki/Principle_of_least_astonishment). For example, `Triage.map_if` is named because it does a `map` based on `if`logic, `Triage.find_value` is meant to work like `Enum.find_value`, and  `Triage.then` is meant to work similarly to Elixir's `Kernel.then`.
