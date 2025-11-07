@@ -3,8 +3,10 @@ defmodule Triage do
   Documentation for `Triage`.
   """
 
+  alias Triage.Results
   alias Triage.Stacktrace
   alias Triage.WrappedError
+  alias Triage.Validate
   require Logger
   require Stacktrace
 
@@ -40,15 +42,8 @@ defmodule Triage do
       iex> Triage.wrap_context({:error, :not_found}, %{user_id: 123})
       {:error, %Triage.WrappedError{}}
   """
-  @spec wrap_context(result(), String.t() | map()) ::
+  @spec wrap_context(result(), String.t() | keyword() | map()) ::
           :ok | {:ok, term()} | {:error, Triage.WrappedError.t()}
-  @spec wrap_context(result(), map(), keyword() | map()) ::
-          :ok | {:ok, term()} | {:error, Triage.WrappedError.t()}
-  def wrap_context(:ok, _meta), do: :ok
-
-  def wrap_context({:ok, result}, _meta) do
-    {:ok, result}
-  end
 
   def wrap_context(result, context) when is_binary(context) do
     wrap_context(result, context, %{})
@@ -62,12 +57,15 @@ defmodule Triage do
   @doc """
   Wrap errors from a result with both a context string and metadata. See `wrap_context/2`
   """
-  def wrap_context(result, context, meta \\ %{})
+  @spec wrap_context(result(), String.t() | nil, keyword() | map()) ::
+          :ok | {:ok, term()} | {:error, Triage.WrappedError.t()}
+
+  # def wrap_context(result, context, meta \\ %{})
 
   def wrap_context(:ok, _context, _meta), do: :ok
 
-  def wrap_context({:ok, result}, _context, _meta) do
-    {:ok, result}
+  def wrap_context(result, _, _) when is_tuple(result) and elem(result, 0) == :ok do
+    result
   end
 
   def wrap_context(:error, context, metadata) do
@@ -76,10 +74,11 @@ defmodule Triage do
     {:error, WrappedError.new(:error, context, stacktrace, metadata)}
   end
 
-  def wrap_context({:error, reason}, context, metadata) do
+  def wrap_context(result, context, metadata)
+      when is_tuple(result) and elem(result, 0) == :error do
     stacktrace = Stacktrace.calling_stacktrace()
 
-    {:error, WrappedError.new({:error, reason}, context, stacktrace, metadata)}
+    {:error, WrappedError.new(result, context, stacktrace, metadata)}
   end
 
   @doc group: "Functions > Control Flow"
@@ -164,7 +163,7 @@ defmodule Triage do
   def then!(:error, _func), do: :error
 
   def then!({:error, _} = result, _func), do: result
-  def then!(other, _), do: validate_result!(other)
+  def then!(other, _), do: Validate.validate_result!(other, :strict)
 
   @doc group: "Functions > Control Flow"
   @doc """
@@ -275,7 +274,7 @@ defmodule Triage do
   end
 
   def handle(result, _) do
-    validate_result!(result)
+    Validate.validate_result!(result, :strict)
 
     result
   end
@@ -437,7 +436,7 @@ defmodule Triage do
           throw({:__ERRORS__, error})
 
         other ->
-          validate_result!(other, "Callback return")
+          Validate.validate_result!(other, :strict, "Callback return")
       end
     end
 
@@ -446,115 +445,6 @@ defmodule Triage do
     # Wrapping throw so that callback throws will not be caught by us
     {:__ERRORS__, error} ->
       error
-  end
-
-  # def telemetry(:ok, name \\ nil), do: telemetry({:ok, nil}, name)
-  #
-  # def telemetry(:ok, name), do: telemetry({:ok, nil}, name)
-  #
-  # def telemetry({:ok, _} = result, name) do
-  #   :telemetry.execute(
-  #     [:errors, :ok],
-  #     %{count: 1},
-  #     %{name: name}
-  #   )
-  #
-  #   result
-  # end
-  #
-  # def telemetry(:error, name), do: telemetry({:error, nil}, name)
-  #
-  # def telemetry({:error, reason}, name) do
-  #   :telemetry.execute(
-  #     [:errors, :error],
-  #     %{count: 1},
-  #     Map.merge(
-  #       %{name: name},
-  #       result_details(reason)
-  #     )
-  #   )
-  #
-  #   {:error}
-  # end
-
-  # Telemetry metadata:
-  #   result_type: :ok / :error
-  #   result_value:
-  #    * 123
-  #    * %MyApp.Accounts.User{id: 123, ...}
-  #    * #Ecto.Changeset<action: ..., changes: ..., ...>
-
-  @doc false
-  def result_details({:error, %WrappedError{} = exception}) do
-    errors = WrappedError.unwrap(exception)
-    last_error = List.last(errors)
-
-    metadata =
-      Enum.reduce(errors, %{}, fn error, metadata ->
-        Map.merge(metadata, error.metadata)
-      end)
-
-    result_details(last_error.result)
-    |> Map.put(:metadata, metadata)
-    |> Map.put(:message, Exception.message(exception))
-  end
-
-  def result_details({:error, %mod{} = exception}) when is_exception(exception) do
-    %{
-      type: "error",
-      mod: mod,
-      reason: Triage.JSON.Shrink.shrink(exception),
-      message:
-        "{:error, #{Triage.Inspect.inspect(exception)}} (message: #{exception_message(exception)})"
-    }
-  end
-
-  def result_details({:error, reason}) do
-    %{
-      type: "error",
-      message: "{:error, #{Triage.Inspect.inspect(reason)}}",
-      reason: Triage.JSON.Shrink.shrink(reason)
-    }
-  end
-
-  def result_details(:error) do
-    %{
-      type: "error",
-      message: Triage.Inspect.inspect(:error)
-    }
-  end
-
-  def result_details({:ok, value}) do
-    %{
-      type: "ok",
-      message: "{:ok, #{Triage.Inspect.inspect(value)}}",
-      value: Triage.JSON.Shrink.shrink(value)
-    }
-  end
-
-  def result_details(:ok) do
-    %{type: "ok", message: Triage.Inspect.inspect(:ok)}
-  end
-
-  # If `result` isn't :ok/:error/{:ok, _}/{:error, _} then it was a raised exception
-  def result_details(%mod{} = exception) when is_exception(exception) do
-    %{
-      type: "raise",
-      message: "** (#{inspect(mod)}) #{Exception.message(exception)}",
-      reason: Triage.JSON.Shrink.shrink(exception)
-    }
-  end
-
-  defp exception_message(%mod{} = exception) when is_exception(exception) do
-    if function_exported?(mod, :message, 1) or Map.has_key?(struct(mod), :message) do
-      Exception.message(exception)
-    else
-      Logger.warning(
-        "Exception module `#{inspect(mod)}` doesn't have a `message` key or implement a `message/1` callback"
-      )
-
-      inspect(exception)
-    end
   end
 
   @doc group: "Functions > Helpers"
@@ -578,39 +468,39 @@ defmodule Triage do
 
   ## Examples
 
-      iex> user_message("Invalid email")
+      iex> user_message({:error, "Invalid email"})
       "Invalid email"
 
-      iex> user_message(%Triage.WrappedError{})
+      iex> user_message({:error, %Triage.WrappedError{}})
       "not found (happened while: fetching user => validating email)"
 
-      iex> user_message(%RuntimeError{message: "boom"})
+      iex> user_message({:error, %RuntimeError{message: "boom"}})
       "There was an error. Refer to code: ABC12345"
 
       Log generated:
       ABC12345: Could not generate user error message. Error was: #RuntimeError<...> (message: boom)
   """
-  def user_message(reason) when is_binary(reason), do: reason
+  def user_message({:error, reason}) when is_binary(reason), do: reason
 
-  def user_message(%WrappedError{} = error) do
+  def user_message({:error, %WrappedError{} = error}) do
     errors = WrappedError.unwrap(error)
     last_error = List.last(errors)
     context_string = Enum.map_join(errors, " => ", & &1.context)
 
-    user_message(last_error.reason) <> " (happened while: #{context_string})"
+    user_message(last_error.result) <> " (happened while: #{context_string})"
   end
 
-  def user_message(exception) when is_exception(exception) do
+  def user_message({:error, exception}) when is_exception(exception) do
     error_code = Triage.String.generate(8)
 
     Logger.error(
-      "#{error_code}: Could not generate user error message. Error was: #{Triage.Inspect.inspect(exception)} (message: #{exception_message(exception)})"
+      "#{error_code}: Could not generate user error message. Error was: #{Triage.Inspect.inspect(exception)} (message: #{Results.exception_message(exception)})"
     )
 
     "There was an error. Refer to code: #{error_code}"
   end
 
-  def user_message(reason) do
+  def user_message({:error, reason}) do
     error_code = Triage.String.generate(8)
 
     Logger.error(
@@ -636,7 +526,7 @@ defmodule Triage do
     * `mode` - Either `:errors` (default, logs only errors) or `:all` (logs all results)
   """
   def log(result, mode \\ :errors) do
-    validate_result!(result)
+    Validate.validate_result!(result, :loose)
 
     if mode not in [:errors, :all] do
       raise ArgumentError, "mode must be either :errors or :all (got: #{inspect(mode)})"
@@ -644,7 +534,7 @@ defmodule Triage do
 
     stacktrace = Stacktrace.calling_stacktrace()
 
-    {message, result_details} = Map.pop(result_details(result), :message)
+    {message, result_details} = Map.pop(Results.details(result), :message)
 
     if result_details.type in ~w[error raise] || mode == :all do
       level = if(result_details.type in ~w[error raise], do: :error, else: :info)
@@ -691,10 +581,9 @@ defmodule Triage do
       false
   """
   def ok?(:ok), do: true
-  def ok?({:ok, _}), do: true
   def ok?(:error), do: false
-  def ok?({:error, _}), do: false
-  def ok?(result), do: validate_result!(result)
+  def ok?(result) when is_tuple(result), do: elem(result, 0) == :ok
+  def ok?(result), do: Validate.validate_result!(result, :loose)
 
   @doc group: "Functions > Helpers"
   @doc """
@@ -718,18 +607,7 @@ defmodule Triage do
       false
   """
   def error?(:ok), do: false
-  def error?({:ok, _}), do: false
   def error?(:error), do: true
-  def error?({:error, _}), do: true
-  def error?(result), do: validate_result!(result)
-
-  defp validate_result!(:ok), do: nil
-  defp validate_result!(:error), do: nil
-  defp validate_result!({:ok, _}), do: nil
-  defp validate_result!({:error, _}), do: nil
-
-  defp validate_result!(result, label \\ "Argument") do
-    raise ArgumentError,
-          "#{label} must be {:ok, _} / :ok / {:error, _} / :error, got: #{inspect(result)}"
-  end
+  def error?(result) when is_tuple(result), do: elem(result, 0) == :error
+  def error?(result), do: Validate.validate_result!(result, :loose)
 end

@@ -146,7 +146,7 @@ defmodule Triage.ThenTest do
       assert wrapped_error.message =~
                ~r<\*\* \(RuntimeError\) boom\n    \[CONTEXT\] test/triage/then_test\.exs:\d+: Triage\.ThenTest\.-test then/1 An exception is raised/1-fun-0-/1>
 
-      assert wrapped_error.reason == %RuntimeError{message: "boom"}
+      assert wrapped_error.result == %RuntimeError{message: "boom"}
     end
   end
 
@@ -179,7 +179,7 @@ defmodule Triage.ThenTest do
       {:error, %Triage.WrappedError{} = wrapped_error} =
         Triage.then(result, fn _ -> raise "boom" end)
 
-      assert wrapped_error.reason == %RuntimeError{message: "boom"}
+      assert wrapped_error.result == %RuntimeError{message: "boom"}
     end
 
     test "chains multiple then calls" do
@@ -209,13 +209,14 @@ defmodule Triage.ThenTest do
         |> Triage.then(fn _ -> raise "boom" end)
         |> Triage.then(fn _ -> raise "Should not be called" end)
 
-      assert {:error, %Triage.WrappedError{reason: %RuntimeError{message: "boom"}}} = result
+      assert {:error, %Triage.WrappedError{result: %RuntimeError{message: "boom"}}} =
+               result
     end
 
     test "catches ArgumentError" do
       result = Triage.then({:ok, "test"}, fn _ -> raise ArgumentError, "invalid argument" end)
 
-      assert {:error, %Triage.WrappedError{reason: %ArgumentError{message: "invalid argument"}}} =
+      assert {:error, %Triage.WrappedError{result: %ArgumentError{message: "invalid argument"}}} =
                result
     end
 
@@ -224,9 +225,9 @@ defmodule Triage.ThenTest do
         defexception message: "custom error"
       end
 
-      result = Triage.then({:ok, 5}, fn _ -> raise CustomError end)
+      assert {:error, %Triage.WrappedError{result: reason}} =
+               Triage.then({:ok, 5}, fn _ -> raise CustomError end)
 
-      assert {:error, %Triage.WrappedError{reason: reason}} = result
       assert reason.__struct__ == CustomError
       assert reason.message == "custom error"
     end

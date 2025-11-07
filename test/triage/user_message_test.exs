@@ -3,12 +3,13 @@ defmodule Triage.UserMessageTest do
   import ExUnit.CaptureLog
 
   test "Just passes strings through" do
-    assert Triage.user_message("There was a really weird error") ==
+    assert Triage.user_message({:error, "There was a really weird error"}) ==
              "There was a really weird error"
   end
 
   test "Atom" do
-    {result, log} = with_log([level: :error], fn -> Triage.user_message(:some_error_atom) end)
+    {result, log} =
+      with_log([level: :error], fn -> Triage.user_message({:error, :some_error_atom}) end)
 
     assert result =~ ~r/There was an error\. Refer to code: [A-Z0-9]{8}/
     [_, code] = Regex.run(~r/Refer to code: ([A-Z0-9]{8})/, result)
@@ -17,7 +18,9 @@ defmodule Triage.UserMessageTest do
 
   test "Exception" do
     {result, log} =
-      with_log(fn -> Triage.user_message(%RuntimeError{message: "an example error message"}) end)
+      with_log(fn ->
+        Triage.user_message({:error, %RuntimeError{message: "an example error message"}})
+      end)
 
     assert result =~
              ~r/There was an error\. Refer to code: [A-Z0-9]{8}/
@@ -35,7 +38,7 @@ defmodule Triage.UserMessageTest do
         {Triage.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
       ])
 
-    assert Triage.user_message(exception) ==
+    assert Triage.user_message({:error, exception}) ==
              "The original message (happened while: fooing the bar)"
 
     exception =
@@ -57,7 +60,7 @@ defmodule Triage.UserMessageTest do
         %{something: %{whatever: :hello}}
       )
 
-    assert Triage.user_message(exception) ==
+    assert Triage.user_message({:error, exception}) ==
              "The original message (happened while: higher up => lower down)"
   end
 
@@ -68,7 +71,7 @@ defmodule Triage.UserMessageTest do
         {Triage.TestHelper, :run_log, 2, [file: ~c"lib/errors/test_helper.ex", line: 10]}
       ])
 
-    {result, log} = with_log(fn -> Triage.user_message(exception) end)
+    {result, log} = with_log(fn -> Triage.user_message({:error, exception}) end)
 
     assert result =~
              ~r/There was an error\. Refer to code: [A-Z0-9]{8} \(happened while: fooing the bar\)/
@@ -97,7 +100,7 @@ defmodule Triage.UserMessageTest do
         %{something: %{whatever: :hello}}
       )
 
-    {result, log} = with_log(fn -> Triage.user_message(exception) end)
+    {result, log} = with_log(fn -> Triage.user_message({:error, exception}) end)
 
     assert result =~
              ~r/There was an error\. Refer to code: [A-Z0-9]{8} \(happened while: higher up => lower down\)/
@@ -119,7 +122,7 @@ defmodule Triage.UserMessageTest do
         ]
       )
 
-    {result, log} = with_log(fn -> Triage.user_message(exception) end)
+    {result, log} = with_log(fn -> Triage.user_message({:error, exception}) end)
 
     assert result =~
              ~r/There was an error\. Refer to code: [A-Z0-9]{8} \(happened while: fooing the bar\)/
@@ -141,7 +144,7 @@ defmodule Triage.UserMessageTest do
         ]
       )
 
-    {result, log} = with_log(fn -> Triage.user_message(exception) end)
+    {result, log} = with_log(fn -> Triage.user_message({:error, exception}) end)
 
     assert result =~
              ~r/There was an error\. Refer to code: [A-Z0-9]{8} \(happened while: fooing the bar\)/

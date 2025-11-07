@@ -93,10 +93,10 @@ def show(conn, %{"order_id" => order_id}) do
     {:ok, value} ->
       # ...
 
-    {:error, reason} ->
+    {:error, _} = error ->
       conn
       |> put_status(400)
-      |> json(%{error: Triage.user_message(reason)})
+      |> json(%{error: Triage.user_message(error)})
   end
   # ...
 ```

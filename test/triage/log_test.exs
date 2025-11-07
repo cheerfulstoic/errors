@@ -48,7 +48,7 @@ defmodule Triage.LogTest do
   describe ".log with :error mode" do
     test "argument can only be a result" do
       assert_raise ArgumentError,
-                   "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: 123",
+                   "Argument must be {:ok, ...} / :ok / {:error, ...} / :error, got: 123",
                    fn ->
                      123 |> Triage.log()
                    end
@@ -83,6 +83,16 @@ defmodule Triage.LogTest do
         end)
 
       assert log =~ ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:error, :timeout}>
+    end
+
+    test "logs and passes through {:error, atom, atom}" do
+      log =
+        capture_log([level: :error], fn ->
+          result = {:error, :timeout, :very_cool} |> Triage.log()
+          assert result == {:error, :timeout, :very_cool}
+        end)
+
+      assert log =~ ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:error, :timeout, :very_cool}>
     end
 
     test "logs and passes through {:error, exception}" do
@@ -221,7 +231,7 @@ defmodule Triage.LogTest do
   describe ".log with :all mode" do
     test "argument can only be a result" do
       assert_raise ArgumentError,
-                   "Argument must be {:ok, _} / :ok / {:error, _} / :error, got: 123",
+                   "Argument must be {:ok, ...} / :ok / {:error, ...} / :error, got: 123",
                    fn ->
                      123 |> Triage.log(:all)
                    end
@@ -318,6 +328,16 @@ defmodule Triage.LogTest do
         end)
 
       assert log =~ ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:ok, \"success\"}>
+    end
+
+    test "logs {:ok, value, value}" do
+      log =
+        capture_log([level: :info], fn ->
+          result = {:ok, "success", :foo} |> Triage.log(:all)
+          assert result == {:ok, "success", :foo}
+        end)
+
+      assert log =~ ~r<\[RESULT\] test/triage/log_test\.exs:\d+: {:ok, \"success\", :foo}>
     end
 
     test "logs nested custom structs in ok tuples" do

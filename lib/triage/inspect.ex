@@ -19,6 +19,13 @@ defmodule Triage.Inspect do
     Kernel.inspect(wrap_value(value), opts)
   end
 
+  defp wrap_value(tuple) when is_tuple(tuple) do
+    tuple
+    |> Tuple.to_list()
+    |> wrap_value()
+    |> List.to_tuple()
+  end
+
   defp wrap_value(list) when is_list(list) do
     Enum.map(list, &wrap_value/1)
   end

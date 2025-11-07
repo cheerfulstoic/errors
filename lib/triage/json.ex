@@ -39,8 +39,10 @@ defimpl Triage.JSON.Shrink, for: Triage.WrappedError do
         }
       end)
 
+    {:error, reason} = last_error.result
+
     %{
-      __root_reason__: Triage.JSON.Shrink.shrink(last_error.reason),
+      __root_reason__: Triage.JSON.Shrink.shrink(reason),
       __contexts__: contexts
     }
   end
