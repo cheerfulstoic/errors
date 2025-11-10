@@ -14,6 +14,10 @@ As much as possible tools in the `triage` library should be named according to t
 
 Because naming is so important, feedback and ideas on the API are very welcome!
 
+## Prefer 2-element result tuples
+
+Using 2-element result tuples (`{:ok, term()}` / `{:error, term()}`) is preferable because it makes for more standard patterns to match against as errors are returned and combined up the stack.  But not all tools return 2-element result tuples.  So the `triage` library supports longer result tuples when doing things like logging, but whenever it returns a result it is always 2-element results.
+
 ## Variety of small tools that work together (UNIX philosophy)
 
 Triage isn't meant to be the ultimate tool to be used for all code which might return errors. Because we're working with standard results that already exist, you should be able to slip in `triage` tools as needed along side `case`, `with`, and other standard Elixir patterns.

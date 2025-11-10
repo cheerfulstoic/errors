@@ -9,7 +9,6 @@ defmodule Triage.WrappedErrorTest do
       %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", [])
 
       assert wrapped_error.result == :error
-      assert wrapped_error.reason == nil
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{}
       assert wrapped_error.message == ":error\n    [CONTEXT] fobbing a widget"
@@ -18,7 +17,6 @@ defmodule Triage.WrappedErrorTest do
       %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", [], a: 1)
 
       assert wrapped_error.result == :error
-      assert wrapped_error.reason == nil
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{a: 1}
       assert wrapped_error.message == ":error\n    [CONTEXT] fobbing a widget %{a: 1}"
@@ -27,7 +25,6 @@ defmodule Triage.WrappedErrorTest do
       %WrappedError{} = wrapped_error = WrappedError.new(:error, "fobbing a widget", [], %{a: 1})
 
       assert wrapped_error.result == :error
-      assert wrapped_error.reason == nil
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{a: 1}
       assert wrapped_error.message == ":error\n    [CONTEXT] fobbing a widget %{a: 1}"
@@ -38,7 +35,6 @@ defmodule Triage.WrappedErrorTest do
         wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", [])
 
       assert wrapped_error.result == {:error, :something}
-      assert wrapped_error.reason == :something
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{}
       assert wrapped_error.message == "{:error, :something}\n    [CONTEXT] fobbing a widget"
@@ -48,7 +44,6 @@ defmodule Triage.WrappedErrorTest do
         wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", [], a: 1)
 
       assert wrapped_error.result == {:error, :something}
-      assert wrapped_error.reason == :something
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{a: 1}
 
@@ -60,7 +55,6 @@ defmodule Triage.WrappedErrorTest do
         wrapped_error = WrappedError.new({:error, :something}, "fobbing a widget", [], %{a: 1})
 
       assert wrapped_error.result == {:error, :something}
-      assert wrapped_error.reason == :something
       assert wrapped_error.context == "fobbing a widget"
       assert wrapped_error.metadata == %{a: 1}
 
@@ -71,7 +65,7 @@ defmodule Triage.WrappedErrorTest do
     test "fails with other inputs" do
       assert_raise(
         ArgumentError,
-        "Triage wrap either :error or {:error, _}, got: :ok",
+        "Triage wrap either :error or {:error, ...}, got: :ok",
         fn ->
           WrappedError.new(:ok, "fobbing a widget", [])
         end
@@ -79,14 +73,14 @@ defmodule Triage.WrappedErrorTest do
 
       assert_raise(
         ArgumentError,
-        "Triage wrap either :error or {:error, _}, got: {:ok, 123}",
+        "Triage wrap either :error or {:error, ...}, got: {:ok, 123}",
         fn ->
           WrappedError.new({:ok, 123}, "fobbing a widget", [])
         end
       )
 
       assert_raise ArgumentError,
-                   "Triage wrap either :error or {:error, _}, got: :some_error",
+                   "Triage wrap either :error or {:error, ...}, got: :some_error",
                    fn ->
                      WrappedError.new(:some_error, "fobbing a widget", [])
                    end

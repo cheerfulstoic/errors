@@ -95,7 +95,6 @@ defmodule Triage.IntegrationTest do
                List.first(second_wrapped_error.stacktrace)
 
       assert %ArgumentError{message: "invalid value"} = second_wrapped_error.result
-      assert %ArgumentError{message: "invalid value"} = second_wrapped_error.reason
     end
 
     test "wraps error with context" do

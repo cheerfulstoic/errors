@@ -35,8 +35,8 @@ Using `find_value`, `then`, and `handle` we can reduce the `reduce_while` boiler
       domain_without_path,
       "www.#{domain_without_path}"
     ]
-    |> Errors.find_value(&dns_lookup/1)
-    |> Errors.then(& "https://" <> unsplit_domain(&1, rest))
-    |> Errors.handle(fn :no_a_record -> :domain_not_found end)
+    |> Triage.find_value(&dns_lookup/1)
+    |> Triage.then(& "https://" <> unsplit_domain(&1, rest))
+    |> Triage.handle(fn :no_a_record -> :domain_not_found end)
   end
 ```

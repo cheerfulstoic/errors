@@ -129,10 +129,10 @@ defmodule MyAppWeb.UserController do
         conn
         |> render("checkout.json", result: result)
       # Ideally we should return a useful error... see below!
-      {:error, reason} ->
+      {:error, _} = error ->
         conn
         |> put_status(400)
-        |> json(%{error: Triage.user_message(reason)})
+        |> json(%{error: Triage.user_message(error)})
     end
     # ...
 ```
@@ -150,6 +150,6 @@ In this case, you could imagine that `MyApp.Users.create_user(params)` could ret
 {:error, %Jason.DecodeError{...}
 ```
 
-`Triage.user_message` always turns the `reason` into a string and does it's best to extract the appropriate data for a human-readable string.
+`Triage.user_message` always turns the `error` into a string and does it's best to extract the appropriate data for a human-readable string.
 
 Additionally, if you use `Triage.wrap_context`, additional information from the `WrappedError` will be available to help describe the error.
