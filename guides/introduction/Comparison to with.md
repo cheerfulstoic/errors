@@ -55,13 +55,11 @@ else
 end
 ```
 
-This gets into the [Complex `else` clauses in `with`](https://hexdocs.pm/elixir/code-anti-patterns.html#complex-else-clauses-in-with) anti-pattern where it becomes hard to keep track of which `else` clause is there because of which of the one or more `with` clauses.
-
-**MORE TO COME, WORK IN PROGRESS...**
+This gets into the [Complex `else` clauses in `with`](https://hexdocs.pm/elixir/code-anti-patterns.html#complex-else-clauses-in-with) anti-pattern where it becomes hard to keep track of which `else` clause handles which `with` clause. Also to make sure you've covered all cases you need to dig into `function1`/`function2`/`function3`, which often isn't trivial.
 
 ## Real Example
 
-Let's take an [example from `oban`](https://github.com/oban-bg/oban/blob/d1789f166f77a5ae8e6548efa1431ed7199e1e63/lib/oban/engines/basic.ex#L428-L448)
+Let's take an [example from `oban`'s source code](https://github.com/oban-bg/oban/blob/d1789f166f77a5ae8e6548efa1431ed7199e1e63/lib/oban/engines/basic.ex#L428-L448):
 
 ```elixir
   defp insert_unique(conf, changeset, opts) do
@@ -87,6 +85,15 @@ Let's take an [example from `oban`](https://github.com/oban-bg/oban/blob/d1789f1
   end
 ```
 
+This definitely requires a lot from the reader if they need to figure out which `else` clause matches up with which `with` clause. And, in fact, there are two cases which return `nil`. If we dig down into each function which is called in the `with` clauses we find:
+
+* `unique_query` returns `{:ok, _, _}` or `nil`
+* `acquire_lock` returns `:ok` or `{:error, :locked}`
+* `fetch_job` returns `{:ok, job}` or `nil`
+* `resolve_conflict` returns `{:ok, job}`, `{:ok, Ecto.Schema.t()}`, `{:error, Ecto.Changeset.t()}`
+
+Aside from having a complex `else` clause, two of the functions return `nil` in some cases. If a function returns `:ok` / `{:ok, _}`, it's clearer to make sure it's always returning some sort of `:ok` / `:error` result. In this case we could return `{:error, :not_found}` to indicate the failure. So, how might we put this code another way? We can use the `then!/2` and `handle/1` functions, which work with `:ok` and `:error` results, respectively:
+
 ```elixir
 defp insert_unique(conf, changeset, opts) do
   opts = Keyword.put(opts, :on_conflict, :nothing)
@@ -108,3 +115,73 @@ defp insert_unique(conf, changeset, opts) do
   |> Triage.handle(fn :not_found -> {:ok, Repo.insert(conf, changeset, opts)} end)
 end
 ```
+
+At first glance this doesn't seem as clean because it doesn't have all of the happy-path cases followed by all of the error handling. But this version has several advantages:
+
+* We're focused on the values from the `{:ok, _}` / `{:error, _}` tuples without dealing with pattern matching on them.
+* Tuples are only specified when we're turning a success into an error or vice-versa which makes those special cases stand out.
+* Error handling is done at the soonest point that it can be handled (just after the call or after calls that might share the same error).
+* Nesting makes it clear where the `query` variable is needed.
+* We can use `then` (not used above, but used instead of `then!`) to catch errors, if we don't want a particular step to crash.
+
+-----
+
+Finally, let's take an example from the ["Complex `else` clauses in `with`"](https://hexdocs.pm/elixir/code-anti-patterns.html#complex-else-clauses-in-with) anti-pattern documentation. The following two functions were extracted from `with` clauses to make sure that the responses are standardized across clauses:
+
+```elixir
+defp file_read(path) do
+  case File.read(path) do
+    {:ok, contents} -> {:ok, contents}
+    {:error, _} -> {:error, :badfile}
+  end
+end
+
+defp base_decode64(contents) do
+  case Base.decode64(contents) do
+    {:ok, decoded} -> {:ok, decoded}
+    :error -> {:error, :badencoding}
+  end
+end
+```
+
+This is an excellent idea and it's one of the problems `triage` tries to solve.
+
+We can imagine refactoring these functions to use further `with` clauses:
+
+```elixir
+defp file_read(path) do
+  with {:error, _} <- File.read(path) do
+    {:error, :badfile}
+  end
+end
+
+defp base_decode64(contents) do
+  with :error <- Base.decode64(contents) do
+    {:error, :badencoding}
+  end
+end
+```
+
+This has the advantage of making it very explicit which pattern we're doing something with and which pattern we're just passing through unchanged.
+
+On the other hand, some people might not be comfortable:
+
+* ...using `with` in a "non-standard" way (matching on :error results instead of :ok results)
+* ...using `with` with just one clause
+* ...not being explicit with each case (and, to be fair, there is sometimes value in a `case` raising a `MatchError`  if a path isn't covered)
+
+```elixir
+defp file_read(path) do
+  File.read(path)
+  |> Triage.handle(fn _ -> :badfile end)
+end
+
+defp base_decode64(contents) do
+  Base.decode64(contents)
+  |> Triage.handle(fn nil -> :badencoding end)
+end
+```
+
+Here we simplify the error handling logic and move it to the end so it reads top-to-bottom. We also get similar behavior to `case` where we get a `MatchError` if a pattern isn't accounted for.
+
+Am I trying to convince you to use this?  Kind of... but only if it makes sense for the situation!
