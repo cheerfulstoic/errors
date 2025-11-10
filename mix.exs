@@ -43,6 +43,7 @@ defmodule Triage.MixProject do
       extras: [
         "README.md",
         "guides/introduction/Contexts.md",
+        "guides/introduction/Output.md",
         "guides/introduction/Enumerating Errors.md",
         "guides/introduction/Control Flow.md",
         "guides/introduction/Comparison to with.md",
