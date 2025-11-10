@@ -36,7 +36,7 @@ This could happen particularly when the function is getting a JSON response from
 
 This means that your `with` is going to return an inconsistent error result.
 
-## You could just introduce an `else`
+You could just introduce an `else`
 
 ```elixir
 with {:ok, a} <- function1(...),
@@ -57,76 +57,11 @@ end
 
 This gets into the [Complex `else` clauses in `with`](https://hexdocs.pm/elixir/code-anti-patterns.html#complex-else-clauses-in-with) anti-pattern where it becomes hard to keep track of which `else` clause handles which `with` clause. Also to make sure you've covered all cases you need to dig into `function1`/`function2`/`function3`, which often isn't trivial.
 
-## Real Example
+## Real Examples
 
-Let's take an [example from `oban`'s source code](https://github.com/oban-bg/oban/blob/d1789f166f77a5ae8e6548efa1431ed7199e1e63/lib/oban/engines/basic.ex#L428-L448):
+### A Simple Example
 
-```elixir
-  defp insert_unique(conf, changeset, opts) do
-    opts = Keyword.put(opts, :on_conflict, :nothing)
-
-    with {:ok, query, lock_key} <- unique_query(changeset),
-         :ok <- acquire_lock(conf, lock_key),
-         {:ok, job} <- fetch_job(conf, query, opts),
-         {:ok, job} <- resolve_conflict(conf, job, changeset, opts) do
-      {:ok, %{job | conflict?: true}}
-    else
-      {:error, :locked} ->
-        with {:ok, job} <- Changeset.apply_action(changeset, :insert) do
-          {:ok, %{job | conflict?: true}}
-        end
-
-      nil ->
-        Repo.insert(conf, changeset, opts)
-
-      error ->
-        error
-    end
-  end
-```
-
-This definitely requires a lot from the reader if they need to figure out which `else` clause matches up with which `with` clause. And, in fact, there are two cases which return `nil`. If we dig down into each function which is called in the `with` clauses we find:
-
-* `unique_query` returns `{:ok, _, _}` or `nil`
-* `acquire_lock` returns `:ok` or `{:error, :locked}`
-* `fetch_job` returns `{:ok, job}` or `nil`
-* `resolve_conflict` returns `{:ok, job}`, `{:ok, Ecto.Schema.t()}`, `{:error, Ecto.Changeset.t()}`
-
-Aside from having a complex `else` clause, two of the functions return `nil` in some cases. If a function returns `:ok` / `{:ok, _}`, it's clearer to make sure it's always returning some sort of `:ok` / `:error` result. In this case we could return `{:error, :not_found}` to indicate the failure. So, how might we put this code another way? We can use the `then!/2` and `handle/1` functions, which work with `:ok` and `:error` results, respectively:
-
-```elixir
-defp insert_unique(conf, changeset, opts) do
-  opts = Keyword.put(opts, :on_conflict, :nothing)
-
-  # Need to refactor `unique_query` to return `{:ok, {query, lock_key}}`
-  unique_query(changeset)
-  |> Triage.then!(fn {query, lock_key} ->
-    acquire_lock(conf, lock_key)
-    |> Triage.handle(fn
-      :locked ->
-        Changeset.apply_action(changeset, :insert)
-        |> Triage.then!(& %{&1 | conflict?: true})
-    end)
-    |> Triage.then!(fn _ -> fetch_job(conf, query, opts) end)
-  end)
-  |> Triage.then!(& resolve_conflict(conf, &1, changeset, opts))
-  # Assuming we refactor `unique_query` and `fetch_job` to return `{:error, :not_found}` instead of `nil`
-  |> Triage.then!(fn job -> %{job | conflict?: true} end)
-  |> Triage.handle(fn :not_found -> {:ok, Repo.insert(conf, changeset, opts)} end)
-end
-```
-
-At first glance this doesn't seem as clean because it doesn't have all of the happy-path cases followed by all of the error handling. But this version has several advantages:
-
-* We're focused on the values from the `{:ok, _}` / `{:error, _}` tuples without dealing with pattern matching on them.
-* Tuples are only specified when we're turning a success into an error or vice-versa which makes those special cases stand out.
-* Error handling is done at the soonest point that it can be handled (just after the call or after calls that might share the same error).
-* Nesting makes it clear where the `query` variable is needed.
-* We can use `then` (not used above, but used instead of `then!`) to catch errors, if we don't want a particular step to crash.
-
------
-
-Finally, let's take an example from the ["Complex `else` clauses in `with`"](https://hexdocs.pm/elixir/code-anti-patterns.html#complex-else-clauses-in-with) anti-pattern documentation. The following two functions were extracted from `with` clauses to make sure that the responses are standardized across clauses:
+Let's take an example from the ["Complex `else` clauses in `with`"](https://hexdocs.pm/elixir/code-anti-patterns.html#complex-else-clauses-in-with) anti-pattern documentation. The following two functions were extracted from `with` clauses to make sure that the responses are standardized across clauses:
 
 ```elixir
 defp file_read(path) do
@@ -178,10 +113,80 @@ end
 
 defp base_decode64(contents) do
   Base.decode64(contents)
+  # Note: handle/2 receives `nil` for bare `:error` atom results
   |> Triage.handle(fn nil -> :badencoding end)
 end
 ```
 
 Here we simplify the error handling logic and move it to the end so it reads top-to-bottom. We also get similar behavior to `case` where we get a `MatchError` if a pattern isn't accounted for.
+
+### A More Complex Example
+
+Finally, let's take an [example from `oban`'s source code](https://github.com/oban-bg/oban/blob/d1789f166f77a5ae8e6548efa1431ed7199e1e63/lib/oban/engines/basic.ex#L428-L448):
+
+```elixir
+  defp insert_unique(conf, changeset, opts) do
+    opts = Keyword.put(opts, :on_conflict, :nothing)
+
+    with {:ok, query, lock_key} <- unique_query(changeset),
+         :ok <- acquire_lock(conf, lock_key),
+         {:ok, job} <- fetch_job(conf, query, opts),
+         {:ok, job} <- resolve_conflict(conf, job, changeset, opts) do
+      {:ok, %{job | conflict?: true}}
+    else
+      {:error, :locked} ->
+        with {:ok, job} <- Changeset.apply_action(changeset, :insert) do
+          {:ok, %{job | conflict?: true}}
+        end
+
+      nil ->
+        Repo.insert(conf, changeset, opts)
+
+      error ->
+        error
+    end
+  end
+```
+
+This definitely requires a lot from the reader if they need to figure out which `else` clause matches up with which `with` clause. And, in fact, there are two cases which return `nil`. If we dig down into each function which is called in the `with` clauses we find:
+
+* `unique_query` returns `{:ok, _, _}` or `nil`
+* `acquire_lock` returns `:ok` or `{:error, :locked}`
+* `fetch_job` returns `{:ok, job}` or `nil`
+* `resolve_conflict` returns `{:ok, job}`, `{:ok, Ecto.Schema.t()}`, `{:error, Ecto.Changeset.t()}`
+
+Aside from having a complex `else` clause, two of the functions return `nil` in some cases. If a function returns `:ok` / `{:ok, _}`, it's clearer to make sure it's always returning some sort of `:ok` / `:error` result. In this case we could return `{:error, :not_found}` to indicate the failure. So, how might we put this code another way? We can use the `Triage.then!/2` and `Triage.handle/2` functions, which work with `:ok` and `:error` results, respectively:
+
+```elixir
+defp insert_unique(conf, changeset, opts) do
+  opts = Keyword.put(opts, :on_conflict, :nothing)
+
+  # Need to refactor `unique_query` to return `{:ok, {query, lock_key}}`
+  unique_query(changeset)
+  |> Triage.then!(fn {query, lock_key} ->
+    acquire_lock(conf, lock_key)
+    |> Triage.handle(fn
+      :locked ->
+        Changeset.apply_action(changeset, :insert)
+        |> Triage.then!(& %{&1 | conflict?: true})
+    end)
+    |> Triage.then!(fn _ -> fetch_job(conf, query, opts) end)
+  end)
+  |> Triage.then!(& resolve_conflict(conf, &1, changeset, opts))
+  # Assuming we refactor `unique_query` and `fetch_job` to return `{:error, :not_found}` instead of `nil`
+  |> Triage.then!(fn job -> %{job | conflict?: true} end)
+  |> Triage.handle(fn :not_found -> {:ok, Repo.insert(conf, changeset, opts)} end)
+end
+```
+
+At first glance this doesn't seem as clean because it doesn't have all of the happy-path cases followed by all of the error handling. But this version has several advantages:
+
+* We're focused on the values from the `{:ok, _}` / `{:error, _}` tuples without dealing with pattern matching on them.
+* Tuples are only specified when we're turning a success into an error or vice-versa which makes those special cases stand out.
+* Error handling is done at the soonest point that it can be handled (just after the call or after calls that might share the same error).
+* Nesting makes it clear where the `query` variable is needed.
+* We can use `then` (not used above, but used instead of `then!`) to catch errors, if we don't want a particular step to crash.
+
+-----
 
 Am I trying to convince you to use this?  Kind of... but only if it makes sense for the situation!
