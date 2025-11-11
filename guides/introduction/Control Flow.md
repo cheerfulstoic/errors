@@ -3,23 +3,27 @@
 Sometimes you have an result and you want to transform it:
 
 * Performing an actions if the previous was successful
-* Returning an error when getting a specific success response
-* Transforming an error result
-* Ignoring an error result (e.g. turning it into a success)
+* Returning an error when getting a specific success response (e.g. a HTTP 500)
+* Transforming one error into another
+* Ignoring an error result (i.e. turning it into a success)
 
-In these cases you can use `Triage.then`, `Triage.then!` to handle ok results and `Triage.handle` to handle error results.
+In these cases you can use `Triage.then`, `Triage.then!` to handle :ok results and `Triage.handle` to handle :error results.
 
-## `then` / `then!`
+The `then` functions work under the assumption that you're going to return another success, so whatever result you return will be wrapped in an `{:ok, _}` tuple when returned.  Similarly, `handle` will wrap the result in an `{:error, _}` tuple.  But if you return `:error` results from `then` or `:ok` results from `handle` then no wrapping occurs. This is so that you can have a flow where changes from the norm (:ok -> :error or :error -> :ok) stand out from the rest of the flow.
+
+## `then` and `then!`
 
 The `then` functions provide a way to chain operations that return results. They allow you to build pipelines of transformations where errors automatically short-circuit the chain.
 
-### `then!/1` - Execute a function + allowing exceptions to raise
+### `then/1` - Execute a function + handle exceptions
 
-Takes a zero-arity function and executes it.  The function can return `:ok`, `{:ok, term()}`, `:error`, or `{:error, term()}`, but any other value is treated as `{:ok, <value>}`
+Takes a zero-arity function and executes it.  The function can return `:ok`, `{:ok, term()}`, `:error`, or `{:error, term()}`, but any other value is treated as `{:ok, <value>}`.
+
+If an exception is raised then a `{:ok, WrappedError.t()}` is returned which wraps the exception.
 
 ```elixir
 # order_id is defined / passed in
-Triage.then!(fn -> fetch_order_from_api(order_id) end)
+Triage.then(fn -> fetch_order_from_api(order_id) end)
 ```
 
 ### `then!/2` - Chaining operations + allowing exceptions to raise
@@ -69,15 +73,37 @@ Log output when String.to_integer/1 raises:
     [CONTEXT] :erlang.binary_to_integer/1
 ```
 
-**When to use which:**
-
-* Use `then!/2` when you want exceptions to propagate (fail fast)
-* Use `then/2` when you want to handle exceptions as errors in your pipeline
-* Use `then!/1` to normalize function returns into result tuples
-
 ## `handle`
 
-The `Triage.handle` function takes in a result uses a callback function to determine how error results should be handled, passing ok results through unchanged.
+The `Triage.handle/2` function takes in a result and uses a callback function to determine how error results should be handled, passing ok results through unchanged.
+
+```elixir
+# Imagine this function returns either:
+#  * {:ok, Confirmation.t()}
+#  * {:error, :invoice_invalid}
+#  * {:error, :credit_card_expired}
+#  * {:error, :billing_service_down}
+bill_customer(customer, invoice)
+|> Triage.handle(fn
+  :invoice_invalid ->
+    {:invoice_invalid, invoice_errors(invoice)}
+
+  :billing_service_down ->
+    # Queue for billing later
+
+    {:ok, :bill_later}
+
+  other ->
+    other
+end)
+# Returns:
+#  * {:ok, Confirmation.t()}
+#  * {:ok, :bill_later}
+#  * {:error, {:invoice_invalid, ...}}
+#  * {:error, :credit_card_expired}
+```
+
+An exception with a function which returns an error result with an exception reason:
 
 ```elixir
 Jason.decode(string)
@@ -86,7 +112,7 @@ Jason.decode(string)
 |> Triage.handle(fn error -> Exception.message(error) end)
 ```
 
-You can use `Triage.handle` to transform the error based on pattern matching:
+You can use `Triage.handle/2` to transform the error based on pattern matching. Here's an example combining `then` and `handle`:
 
 ```elixir
 HTTPoison.get(url)
@@ -109,9 +135,12 @@ end)
 end)
 ```
 
-Or you can ignore the error and return a success:
+Or you can provide a default value on failure:
 
 ```elixir
 Jason.decode(string)
 |> Triage.handle(fn _ -> {:ok, @default_result} end)
 ```
+
+> [!NOTE]
+> You might be wondering why you might use `then` / `handle` functions instead of `with`.  If so, check out the [Comparison to with](comparison-to-with.html) section.
