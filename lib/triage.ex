@@ -10,7 +10,8 @@ defmodule Triage do
   require Logger
   require Stacktrace
 
-  @type result() :: :ok | :error | {:ok, term()} | {:error, term()}
+  @type result() :: :ok | {:ok, term()} | :error | {:error, term()}
+  @type value_result() :: {:ok, term()} | :error | {:error, term()}
 
   @doc group: "Functions > Contexts"
   @doc """
@@ -85,7 +86,7 @@ defmodule Triage do
   @doc """
   Executes a function that returns a result tuple, without exception handling.
 
-  Calls the provided zero-arity function and chehcks that it returns a result
+  Calls the provided zero-arity function and checks that it returns a result
   (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`). If the function returns
   any other value, it wraps it in `{:ok, value}`.
 
@@ -98,13 +99,19 @@ defmodule Triage do
 
   ## Examples
 
+      iex> then!(fn -> 42 end)
+      {:ok, 42}
+
       iex> then!(fn -> {:ok, 42} end)
       {:ok, 42}
 
       iex> then!(fn -> {:error, :not_found} end)
       {:error, :not_found}
+
+      iex> then!(fn -> :error end)
+      :error
   """
-  @spec then!((term() -> term())) :: result()
+  @spec then!((() -> any())) :: result()
   def then!(func) do
     case func.() do
       :ok -> :ok
@@ -364,6 +371,8 @@ defmodule Triage do
       iex> Triage.find_value({:error, :not_found}, fn _ -> <not called> end)
       {:error, :not_found}
   """
+  @spec find_value(value_result() | Enumerable.t(), (term() -> result())) ::
+          :ok | {:ok, term()} | {:error, [term()]}
   def find_value({:ok, input}, func), do: find_value(input, func)
   def find_value(:error, _), do: :error
   def find_value({:error, _} = error, _), do: error
@@ -372,10 +381,20 @@ defmodule Triage do
     errors =
       Enum.map(input, fn value ->
         case func.(value) do
-          :ok -> throw({:__ERRORS__, :ok})
-          {:ok, _} = result -> throw({:__ERRORS__, result})
-          :error -> nil
-          {:error, reason} -> reason
+          :ok ->
+            throw({:__ERRORS__, :ok})
+
+          {:ok, _} = result ->
+            throw({:__ERRORS__, result})
+
+          :error ->
+            nil
+
+          {:error, reason} ->
+            reason
+
+          other ->
+            Validate.validate_result!(other, :strict, "Callback return")
         end
       end)
 
@@ -387,7 +406,8 @@ defmodule Triage do
 
   @doc group: "Functions > Enumeration"
   @doc """
-  Validates that all elements in an enumerable pass a validation function.
+  Validates that a callback function gives an `:ok` / `{:ok, _}` result for all elements
+  in the given enumerable.
 
   Takes an enumerable or `{:ok, enumerable}` and applies a callback function to each
   element. If all callbacks return `:ok` or `{:ok, value}` then `:ok` is returned.
@@ -416,6 +436,8 @@ defmodule Triage do
       iex> Triage.all({:error, :not_found}, fn _ -> <not called> end)
       {:error, :not_found}
   """
+  @spec all(value_result() | Enumerable.t(), (term() -> result())) ::
+          :ok | :error | {:error, Triage.WrappedError.t()}
   def all({:ok, input}, func), do: all(input, func)
   def all(:error, _), do: :error
   def all({:error, _} = error, _), do: error

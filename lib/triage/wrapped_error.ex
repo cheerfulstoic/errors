@@ -152,7 +152,7 @@ if Code.ensure_loaded?(JSON.Encoder) do
     def encode(error, encoder) do
       errors = Triage.WrappedError.unwrap(error)
 
-      message = Results.details(List.last(errors).result).message
+      message = Triage.Results.details(List.last(errors).result).message
 
       encoder.(%{
         message: message,
@@ -164,12 +164,10 @@ end
 
 # if Code.ensure_loaded?(Jason.Encoder) do
 defimpl Jason.Encoder, for: Triage.WrappedError do
-  alias Triage.Results
-
   def encode(error, opts) do
     errors = Triage.WrappedError.unwrap(error)
 
-    message = Results.details(List.last(errors).result).message
+    message = Triage.Results.details(List.last(errors).result).message
 
     Jason.Encode.map(
       %{
@@ -186,7 +184,15 @@ end
 defimpl Inspect, for: Triage.WrappedError do
   import Inspect.Algebra
 
-  def inspect(wrapped_error, opts) do
+  # In Elixir 1.19+, Inspect protocol can return {doc, opts} to pass through options
+  # In Elixir < 1.19, it must return only the document
+  if Version.match?(System.version(), ">= 1.19.0") do
+    def inspect(wrapped_error, opts), do: {build_doc(wrapped_error), opts}
+  else
+    def inspect(wrapped_error, opts), do: build_doc(wrapped_error)
+  end
+
+  defp build_doc(wrapped_error) do
     errors = Triage.WrappedError.unwrap(wrapped_error)
 
     contexts_doc =
@@ -195,10 +201,8 @@ defimpl Inspect, for: Triage.WrappedError do
       |> Enum.intersperse(" => ")
       |> concat()
 
-    message = Results.details(List.last(errors).result).message
+    message = Triage.Results.details(List.last(errors).result).message
 
-    # {doc, opts} = to_doc_with_opts(MapSet.to_list(map_set), opts)
-
-    {concat(["Triage.WrappedError<<", contexts_doc, " | ", message, ">>"]), opts}
+    concat(["Triage.WrappedError<<", contexts_doc, " | ", message, ">>"])
   end
 end

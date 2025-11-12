@@ -18,6 +18,18 @@ defmodule Triage.FindValueTest do
       end
     end
 
+    test "callback returns non-result" do
+      func = fn i -> if(i == 5, do: {:error, :is_five}, else: 123) end
+
+      assert_raise ArgumentError, ~r/Callback return must be /, fn ->
+        Triage.find_value(1..4, func)
+      end
+
+      assert_raise ArgumentError, ~r/Callback return must be /, fn ->
+        Triage.find_value({:ok, 1..4}, func)
+      end
+    end
+
     test "ok if first result is ok" do
       func = fn i -> if(i < 5, do: {:error, :below_five}, else: :ok) end
 

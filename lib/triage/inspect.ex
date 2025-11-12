@@ -48,6 +48,11 @@ defmodule Triage.Inspect do
 end
 
 defimpl Inspect, for: Triage.Inspect.Wrapper do
+  # The `inspect/4` function was changed to `inspect_as_struct/4` in Elixir 1.19
+  @inspect_any_function if Version.match?(System.version(), ">= 1.19.0"),
+                          do: :inspect_as_struct,
+                          else: :inspect
+
   def inspect(%{value: value}, opts) do
     inspect_value(value, opts)
   end
@@ -60,13 +65,7 @@ defimpl Inspect, for: Triage.Inspect.Wrapper do
       |> Enum.filter(&include_key_value?(mod, &1.field, map[&1.field]))
       |> order_fields()
 
-    try do
-      # The `inspect/4` function was changed to `inspect_as_struct/4` in Elixir 1.19
-      Inspect.Any.inspect_as_struct(map, Macro.inspect_atom(:literal, mod), fields, opts)
-    rescue
-      UndefinedFunctionError ->
-        Inspect.Any.inspect(map, Macro.inspect_atom(:literal, mod), fields, opts)
-    end
+    apply(Inspect.Any, @inspect_any_function, [map, Macro.inspect_atom(:literal, mod), fields, opts])
   end
 
   defp inspect_value(value, opts), do: Inspect.inspect(value, opts)

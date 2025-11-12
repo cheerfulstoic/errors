@@ -66,14 +66,13 @@ defmodule Triage.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:jason, "~> 1.4", optional: true},
+
       {:mix_test_interactive, "~> 5.0", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: :dev},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ecto, "~> 3.0", only: :test, runtime: false},
-      {:jason, "~> 1.4", optional: true},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false, warn_if_outdated: true}
-
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:ex_doc, "~> 0.39", only: :dev, runtime: false, warn_if_outdated: true}
     ]
   end
 end
