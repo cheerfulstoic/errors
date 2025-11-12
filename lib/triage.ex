@@ -298,6 +298,8 @@ defmodule Triage do
   If `map_if` is given an `:error` result for it's first argument that argument is returned
   unchanged and the callback is never called.
 
+  Since `map_if` requires an enumerable value to work with, it will fail if given `:ok` as a result argument.
+
   This is useful when you need all transformations to succeed—if any fail, you don't want
   the partial results.
 

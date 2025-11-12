@@ -6,7 +6,7 @@ defmodule Triage.MixProject do
   def project do
     [
       app: :triage,
-      version: "0.3.5",
+      version: "0.3.6",
       elixir: "~> 1.15",
       description: "Making dealing with results (ok/error) easy",
       licenses: ["MIT"],
@@ -67,7 +67,6 @@ defmodule Triage.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4", optional: true},
-
       {:mix_test_interactive, "~> 5.0", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: :dev},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
