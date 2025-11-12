@@ -189,7 +189,7 @@ defimpl Inspect, for: Triage.WrappedError do
   if Version.match?(System.version(), ">= 1.19.0") do
     def inspect(wrapped_error, opts), do: {build_doc(wrapped_error), opts}
   else
-    def inspect(wrapped_error, opts), do: build_doc(wrapped_error)
+    def inspect(wrapped_error, _opts), do: build_doc(wrapped_error)
   end
 
   defp build_doc(wrapped_error) do
