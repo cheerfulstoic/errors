@@ -1,14 +1,5 @@
 # Enumerating Errors
 
-THIS PAGE UNDER CONSTRUCTION!
-
-Triage.map??
-
-Triage.map_until
-
-Triage.all => :ok | :error | {:error, term()} (doesn't return results)
-Triage.find_value
-
 ## `map_if`
 
 [source for original example](https://github.com/plausible/analytics/blob/64aa2434e9b0e5836f5a47a9ec31bf57cd9da4d4/lib/plausible_web/controllers/api/external_stats_controller.ex#L141-L148)
