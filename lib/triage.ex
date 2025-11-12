@@ -10,8 +10,8 @@ defmodule Triage do
   require Logger
   require Stacktrace
 
-  @type result() :: :ok | {:ok, term()} | :error | {:error, term()}
-  @type value_result() :: {:ok, term()} | :error | {:error, term()}
+  @type result() :: :ok | {:ok, any()} | :error | {:error, any()}
+  @type value_result() :: {:ok, any()} | :error | {:error, any()}
 
   @doc group: "Functions > Contexts"
   @doc """
@@ -44,7 +44,7 @@ defmodule Triage do
       {:error, %Triage.WrappedError{}}
   """
   @spec wrap_context(result(), String.t() | keyword() | map()) ::
-          :ok | {:ok, term()} | {:error, Triage.WrappedError.t()}
+          :ok | {:ok, any()} | {:error, Triage.WrappedError.t()}
 
   def wrap_context(result, context) when is_binary(context) do
     wrap_context(result, context, %{})
@@ -59,7 +59,7 @@ defmodule Triage do
   Wrap errors from a result with both a context string and metadata. See `wrap_context/2`
   """
   @spec wrap_context(result(), String.t() | nil, keyword() | map()) ::
-          :ok | {:ok, term()} | {:error, Triage.WrappedError.t()}
+          :ok | {:ok, any()} | {:error, Triage.WrappedError.t()}
 
   # def wrap_context(result, context, meta \\ %{})
 
@@ -111,7 +111,7 @@ defmodule Triage do
       iex> then!(fn -> :error end)
       :error
   """
-  @spec then!((() -> any())) :: result()
+  @spec then!((-> any())) :: result()
   def then!(func) do
     case func.() do
       :ok -> :ok
@@ -146,7 +146,7 @@ defmodule Triage do
       iex> then!({:error, :not_found}, fn x -> {:ok, x * 2} end)
       {:error, :not_found}
   """
-  @spec then!(result(), (term() -> term())) :: result()
+  @spec then!(result(), (any() -> any())) :: result()
   def then!(:ok, func) do
     case func.(nil) do
       :ok -> :ok
@@ -192,7 +192,7 @@ defmodule Triage do
       iex> then(fn -> raise "boom" end)
       {:error, %Triage.WrappedError{}}
   """
-  @spec then((term() -> term())) :: result()
+  @spec then((any() -> any())) :: result()
   def then(func) do
     try do
       then!(func)
@@ -224,7 +224,7 @@ defmodule Triage do
       iex> then({:ok, 5}, fn _x -> raise "boom" end)
       {:error, %Triage.WrappedError{}}
   """
-  @spec then(result(), (term() -> term())) :: result()
+  @spec then(result(), (any() -> any())) :: result()
   def then(result, func) do
     try do
       then!(result, func)
@@ -244,7 +244,7 @@ defmodule Triage do
 
   If `:error` is the given result, `nil` will be given to the callback function.
 
-  The callback function can also return `:ok` or `{:ok, term()}` to have the error
+  The callback function can also return `:ok` or `{:ok, any()}` to have the error
   be ignored and the `:ok` result will be returned instead.
 
   ## Examples
@@ -264,7 +264,7 @@ defmodule Triage do
       iex> Triage.handle(:error, fn nil -> :handled end)
       {:error, :handled}
   """
-  @spec handle(result(), (term() -> term())) :: result()
+  @spec handle(result(), (any() -> any())) :: result()
   def handle(:error, func), do: handle({:error, nil}, func)
 
   def handle({:error, reason}, func) do
@@ -315,7 +315,7 @@ defmodule Triage do
       iex> Triage.map_if({:error, :not_found}, fn _ -> <not called end)
       {:error, :not_found}
   """
-  @spec map_if(result(), (term() -> term())) :: result()
+  @spec map_if(result(), (any() -> any())) :: result()
   def map_if({:ok, value}, func), do: map_if(value, func)
   def map_if(:error, _), do: :error
   def map_if({:error, _} = error, _), do: error
@@ -371,8 +371,8 @@ defmodule Triage do
       iex> Triage.find_value({:error, :not_found}, fn _ -> <not called> end)
       {:error, :not_found}
   """
-  @spec find_value(value_result() | Enumerable.t(), (term() -> result())) ::
-          :ok | {:ok, term()} | {:error, [term()]}
+  @spec find_value(value_result() | Enumerable.t(), (any() -> result())) ::
+          :ok | {:ok, any()} | {:error, [any()]}
   def find_value({:ok, input}, func), do: find_value(input, func)
   def find_value(:error, _), do: :error
   def find_value({:error, _} = error, _), do: error
@@ -409,8 +409,9 @@ defmodule Triage do
   Validates that a callback function gives an `:ok` / `{:ok, _}` result for all elements
   in the given enumerable.
 
-  Takes an enumerable or `{:ok, enumerable}` and applies a callback function to each
-  element. If all callbacks return `:ok` or `{:ok, value}` then `:ok` is returned.
+  Takes an enumerable or `{:ok, enumerable}` (giving `:ok` will return an error)
+  and applies a callback function to each element. If all calls to the callback
+  return `:ok` or `{:ok, any()}` then `all` returns `:ok`.
 
   If any callback returns an error, immediately stops processing and returns that error.
 
@@ -436,7 +437,7 @@ defmodule Triage do
       iex> Triage.all({:error, :not_found}, fn _ -> <not called> end)
       {:error, :not_found}
   """
-  @spec all(value_result() | Enumerable.t(), (term() -> result())) ::
+  @spec all(value_result() | Enumerable.t(), (any() -> result())) ::
           :ok | :error | {:error, Triage.WrappedError.t()}
   def all({:ok, input}, func), do: all(input, func)
   def all(:error, _), do: :error
@@ -473,7 +474,7 @@ defmodule Triage do
   @doc """
   Generates a user-friendly error message from various error types.
 
-  Converts errors into human-readable messages suitable for displaying to end users.
+  Converts `{:error, reason}` tuples into human-readable messages suitable for displaying to end users.
 
   When the `reason` is a string, the string error message is returned.
 
@@ -493,6 +494,8 @@ defmodule Triage do
       iex> user_message({:error, "Invalid email"})
       "Invalid email"
 
+      # WrappedError which was returned as a result of `wrap_context` being called in two places
+      # and where the original error was `{:error, "not found"}`
       iex> user_message({:error, %Triage.WrappedError{}})
       "not found (happened while: fetching user => validating email)"
 
@@ -502,6 +505,7 @@ defmodule Triage do
       Log generated:
       ABC12345: Could not generate user error message. Error was: #RuntimeError<...> (message: boom)
   """
+  @spec user_message({:error, any()}) :: String.t()
   def user_message({:error, reason}) when is_binary(reason), do: reason
 
   def user_message({:error, %WrappedError{} = error}) do
@@ -536,17 +540,20 @@ defmodule Triage do
   @doc """
   Logs a result tuple and returns it unchanged.
 
-  Takes a result and logs it using the configured log adapter. By default, only
-  errors are logged. Use `mode: :all` to log both successes and errors.
+  Takes a result and logs it. By default, only errors are logged.
+
+  The `mode` argument can be either `:errors` (the default) or `:all` (logs all results)
 
   See [this guide](logging-json.html) for information about
   logging with JSON
 
-  ## Parameters
+  The `result` passed in can be:
 
-    * `result` - The result to log (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`)
-    * `mode` - Either `:errors` (default, logs only errors) or `:all` (logs all results)
+   * :ok / :error
+   * {:ok, any()} / {:error, any()}
+   * {:ok, ...} / {:error, ...} (any sized tuple starting with :ok or :error)
   """
+  @spec log(result() | tuple()) :: result() | tuple()
   def log(result, mode \\ :errors) do
     Validate.validate_result!(result, :loose)
 
@@ -583,10 +590,10 @@ defmodule Triage do
 
   @doc group: "Functions > Helpers"
   @doc """
-  Checks if a result is a success (`:ok` or `{:ok, term()}`).
+  Checks if a result is a success (`:ok` or `{:ok, any()}`).
 
-  Returns `true` if the result is `:ok` or `{:ok, term()}`, `false` if it's
-  `:error` or `{:error, term()}`. Raises `ArgumentError` for any other value.
+  Returns `true` if the result is `:ok` or `{:ok, any()}`, `false` if it's
+  `:error` or `{:error, any()}`. Raises `ArgumentError` for any other value.
 
   ## Examples
 
@@ -596,10 +603,16 @@ defmodule Triage do
       iex> Triage.ok?({:ok, 42})
       true
 
+      iex> Triage.ok?({:ok, 42, :ignore})
+      true
+
       iex> Triage.ok?(:error)
       false
 
       iex> Triage.ok?({:error, :not_found})
+      false
+
+      iex> Triage.ok?({:error, :not_found, 123})
       false
   """
   def ok?(:ok), do: true
@@ -609,10 +622,10 @@ defmodule Triage do
 
   @doc group: "Functions > Helpers"
   @doc """
-  Checks if a result is an error (`:error` or `{:error, term()}`).
+  Checks if a result is an error (`:error` or `{:error, any()}`).
 
-  Returns `true` if the result is `:error` or `{:error, term()}`, `false` if it's
-  `:ok` or `{:ok, term()}`. Raises `ArgumentError` for any other value.
+  Returns `true` if the result is `:error` or `{:error, any()}`, `false` if it's
+  `:ok` or `{:ok, any()}`. Raises `ArgumentError` for any other value.
 
   ## Examples
 
@@ -622,10 +635,16 @@ defmodule Triage do
       iex> Triage.error?({:error, :not_found})
       true
 
+      iex> Triage.error?({:error, :not_found, 123})
+      true
+
       iex> Triage.error?(:ok)
       false
 
       iex> Triage.error?({:ok, 42})
+      false
+
+      iex> Triage.error?({:ok, 42, :ignored})
       false
   """
   def error?(:ok), do: false
