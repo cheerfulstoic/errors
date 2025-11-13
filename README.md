@@ -101,6 +101,8 @@ def show(conn, %{"order_id" => order_id}) do
   # ...
 ```
 
+The `user_message` function even supports a default implementation to provide `Ecto.Changeset` errors, so if it gets a changeset value in an error then users will get a reasonable value such as "age: must be greater than 18; email: can't be blank".
+
 See the [Outputs section of the docs](https://hexdocs.pm/triage/outputs.html) for more information.
 
 ### Enumeration
