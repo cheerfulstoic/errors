@@ -184,12 +184,8 @@ defmodule Triage.UserMessageTest do
         |> Ecto.Changeset.validate_required([:email, :name])
         |> Ecto.Changeset.validate_number(:age, greater_than: 18)
 
-      result = Triage.user_message({:error, changeset})
-
-      # The order of fields might vary, so check that all parts are present
-      assert result =~ "email: can't be blank"
-      assert result =~ "name: can't be blank"
-      assert result =~ "age: must be greater than 18"
+      assert Triage.user_message({:error, changeset}) ==
+               "age: must be greater than 18; email: can't be blank; name: can't be blank"
     end
 
     test "error with interpolated values" do
