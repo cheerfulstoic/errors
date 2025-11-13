@@ -507,7 +507,7 @@ defmodule Triage do
 
       # Ecto.Changeset with validation errors on multiple fields
       iex> user_message({:error, %Ecto.Changeset{errors: [...]}})
-      "email: has invalid format, should be at least 10 character(s);name: can't be blank"
+      "email: has invalid format, should be at least 10 character(s); name: can't be blank"
 
       iex> user_message({:error, %RuntimeError{message: "boom"}})
       "There was an error. Refer to code: ABC12345"
