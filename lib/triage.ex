@@ -487,6 +487,10 @@ defmodule Triage do
    * logs the error code with full error details
    * returns a generic error to the user with the error code that the user can report
 
+  There is also logic to specifically deal with `Ecto.Changeset` validation errors
+  so that you don't need to implement your own (at least as long as you're happy
+  with the default behavior)
+
   ## Parameters
 
     * `reason` - The error to convert (string, exception, `%Triage.WrappedError{}`, or any other value)
@@ -501,6 +505,10 @@ defmodule Triage do
       iex> user_message({:error, %Triage.WrappedError{}})
       "not found (happened while: fetching user => validating email)"
 
+      # Ecto.Changeset with validation errors on multiple fields
+      iex> user_message({:error, %Ecto.Changeset{errors: [...]}})
+      "email: has invalid format, should be at least 10 character(s);name: can't be blank"
+
       iex> user_message({:error, %RuntimeError{message: "boom"}})
       "There was an error. Refer to code: ABC12345"
 
@@ -509,6 +517,10 @@ defmodule Triage do
   """
   @spec user_message({:error, any()}) :: String.t()
   def user_message({:error, reason}) when is_binary(reason), do: reason
+
+  def user_message({:error, %Ecto.Changeset{} = changeset}) do
+    Triage.Ecto.format_errors(changeset)
+  end
 
   def user_message({:error, %WrappedError{} = error}) do
     errors = WrappedError.unwrap(error)

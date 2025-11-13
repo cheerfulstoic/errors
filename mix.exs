@@ -70,7 +70,7 @@ defmodule Triage.MixProject do
       {:mix_test_interactive, "~> 5.0", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: :dev},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:ecto, "~> 3.0", only: :test, runtime: false},
+      {:ecto, "~> 3.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.39", only: :dev, runtime: false, warn_if_outdated: true}
     ]
   end

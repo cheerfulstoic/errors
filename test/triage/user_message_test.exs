@@ -154,4 +154,192 @@ defmodule Triage.UserMessageTest do
     assert log =~
              ~r/#{code}: Could not generate user error message. Error was: :error/
   end
+
+  describe "Ecto.Changeset" do
+    test "single field with single error" do
+      changeset =
+        {%{}, %{email: :string}}
+        |> Ecto.Changeset.cast(%{}, [:email])
+        |> Ecto.Changeset.validate_required([:email])
+
+      assert Triage.user_message({:error, changeset}) == "email: can't be blank"
+    end
+
+    test "single field with multiple errors" do
+      changeset =
+        {%{}, %{email: :string}}
+        |> Ecto.Changeset.cast(%{email: "invalid"}, [:email])
+        |> Ecto.Changeset.validate_required([:email])
+        |> Ecto.Changeset.validate_format(:email, ~r/@/)
+        |> Ecto.Changeset.validate_length(:email, min: 10)
+
+      assert Triage.user_message({:error, changeset}) ==
+               "email: has invalid format, should be at least 10 character(s)"
+    end
+
+    test "multiple fields with errors" do
+      changeset =
+        {%{}, %{email: :string, age: :integer, name: :string}}
+        |> Ecto.Changeset.cast(%{age: 15}, [:email, :age, :name])
+        |> Ecto.Changeset.validate_required([:email, :name])
+        |> Ecto.Changeset.validate_number(:age, greater_than: 18)
+
+      result = Triage.user_message({:error, changeset})
+
+      # The order of fields might vary, so check that all parts are present
+      assert result =~ "email: can't be blank"
+      assert result =~ "name: can't be blank"
+      assert result =~ "age: must be greater than 18"
+    end
+
+    test "error with interpolated values" do
+      changeset =
+        {%{}, %{password: :string}}
+        |> Ecto.Changeset.cast(%{password: "short"}, [:password])
+        |> Ecto.Changeset.validate_length(:password, min: 8)
+
+      assert Triage.user_message({:error, changeset}) ==
+               "password: should be at least 8 character(s)"
+    end
+
+    test "base errors without field prefix" do
+      changeset =
+        {%{}, %{email: :string}}
+        |> Ecto.Changeset.cast(%{email: "test@example.com"}, [:email])
+        |> Ecto.Changeset.add_error(:base, "either email or username must be unique")
+
+      assert Triage.user_message({:error, changeset}) ==
+               "either email or username must be unique"
+    end
+
+    test "empty changeset with no errors" do
+      changeset =
+        {%{}, %{email: :string}}
+        |> Ecto.Changeset.cast(%{email: "valid@example.com"}, [:email])
+
+      # Edge case: valid changeset passed as error
+      assert Triage.user_message({:error, changeset}) == ""
+    end
+
+    test "mix of base and field errors" do
+      changeset =
+        {%{}, %{email: :string, username: :string}}
+        |> Ecto.Changeset.cast(%{}, [:email, :username])
+        |> Ecto.Changeset.validate_required([:email])
+        |> Ecto.Changeset.add_error(:base, "either email or username required")
+
+      result = Triage.user_message({:error, changeset})
+
+      # Base errors come first alphabetically, then field errors
+      assert result == "either email or username required; email: can't be blank"
+    end
+
+    test "multiple base errors" do
+      changeset =
+        {%{}, %{}}
+        |> Ecto.Changeset.cast(%{}, [])
+        |> Ecto.Changeset.add_error(:base, "first base error")
+        |> Ecto.Changeset.add_error(:base, "second base error")
+
+      assert Triage.user_message({:error, changeset}) ==
+               "first base error, second base error"
+    end
+
+    test "validate_format for email" do
+      changeset =
+        {%{}, %{email: :string}}
+        |> Ecto.Changeset.cast(%{email: "notanemail"}, [:email])
+        |> Ecto.Changeset.validate_format(:email, ~r/@/)
+
+      assert Triage.user_message({:error, changeset}) == "email: has invalid format"
+    end
+
+    test "validate_format for email - custom message" do
+      changeset =
+        {%{}, %{email: :string}}
+        |> Ecto.Changeset.cast(%{email: "notanemail"}, [:email])
+        |> Ecto.Changeset.validate_format(:email, ~r/@/, message: "custom message")
+
+      assert Triage.user_message({:error, changeset}) == "email: custom message"
+    end
+
+    test "validate_subset with list" do
+      changeset =
+        {%{}, %{tags: {:array, :string}}}
+        |> Ecto.Changeset.cast(%{tags: ["elixir", "invalid", "phoenix"]}, [:tags])
+        |> Ecto.Changeset.validate_subset(:tags, ["elixir", "phoenix", "erlang"])
+
+      assert Triage.user_message({:error, changeset}) ==
+               ~s(tags: expected to be a subset of ["elixir", "phoenix", "erlang"])
+    end
+
+    test "validate_subset with range" do
+      changeset =
+        {%{}, %{numbers: {:array, :integer}}}
+        |> Ecto.Changeset.cast(%{numbers: [1, 5, 10]}, [:numbers])
+        |> Ecto.Changeset.validate_subset(:numbers, 1..8)
+
+      assert Triage.user_message({:error, changeset}) ==
+               "numbers: expected to be a subset of 1..8"
+    end
+
+    test "validate_change with custom validation" do
+      changeset =
+        {%{}, %{username: :string}}
+        |> Ecto.Changeset.cast(%{username: "admin"}, [:username])
+        |> Ecto.Changeset.validate_change(:username, fn :username, value ->
+          if value == "admin", do: [username: "reserved username"], else: []
+        end)
+
+      assert Triage.user_message({:error, changeset}) == "username: reserved username"
+    end
+
+    test "validate_inclusion" do
+      changeset =
+        {%{}, %{role: :string}}
+        |> Ecto.Changeset.cast(%{role: "superadmin"}, [:role])
+        |> Ecto.Changeset.validate_inclusion(:role, ["user", "admin", "moderator"])
+
+      assert Triage.user_message({:error, changeset}) ==
+               ~s(role: must be one of: ["user", "admin", "moderator"])
+    end
+
+    test "validate_exclusion" do
+      changeset =
+        {%{}, %{username: :string}}
+        |> Ecto.Changeset.cast(%{username: "admin"}, [:username])
+        |> Ecto.Changeset.validate_exclusion(:username, ["admin", "root", "system"])
+
+      assert Triage.user_message({:error, changeset}) ==
+               ~s(username: cannot be one of: ["admin", "root", "system"])
+    end
+
+    test "validate_number with greater_than" do
+      changeset =
+        {%{}, %{age: :integer}}
+        |> Ecto.Changeset.cast(%{age: 15}, [:age])
+        |> Ecto.Changeset.validate_number(:age, greater_than: 18)
+
+      assert Triage.user_message({:error, changeset}) == "age: must be greater than 18"
+    end
+
+    test "validate_number with less_than_or_equal_to" do
+      changeset =
+        {%{}, %{score: :integer}}
+        |> Ecto.Changeset.cast(%{score: 150}, [:score])
+        |> Ecto.Changeset.validate_number(:score, less_than_or_equal_to: 100)
+
+      assert Triage.user_message({:error, changeset}) ==
+               "score: must be less than or equal to 100"
+    end
+
+    test "validate_number with equal_to" do
+      changeset =
+        {%{}, %{quantity: :integer}}
+        |> Ecto.Changeset.cast(%{quantity: 5}, [:quantity])
+        |> Ecto.Changeset.validate_number(:quantity, equal_to: 10)
+
+      assert Triage.user_message({:error, changeset}) == "quantity: must be equal to 10"
+    end
+  end
 end
