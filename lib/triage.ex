@@ -23,6 +23,14 @@ defmodule Triage do
   If the second argument is a string, the context is set. If the second argument is a
   keyword list or a map the metadata is set.  The arity 3 version allows setting both.
 
+  Because the context is designed to show what was happening in logs or in user error
+  messages, the context string should describe what is being attempted in **business logic**
+  terms. e.g.:
+
+   * GOOD: "connecting to user service" (describe the action)
+   * BAD: "failed to connect to user service" ("failed to connect" describes a failure)
+   * BAD: "HTTP request to user_authentication server" (technical terms)
+
   The `log/2` and `user_message/1` functions support `WrappedError` results. See their
   docs for more details
 
@@ -563,9 +571,9 @@ defmodule Triage do
 
   The `result` passed in can be:
 
-   * :ok / :error
-   * {:ok, any()} / {:error, any()}
-   * {:ok, ...} / {:error, ...} (any sized tuple starting with :ok or :error)
+   * `:ok` / `:error`
+   * `{:ok, any()}` / `{:error, any()}`
+   * `{:ok, ...}` / `{:error, ...}` (any sized tuple starting with :ok or :error)
   """
   @spec log(result() | tuple()) :: result() | tuple()
   def log(result, mode \\ :errors) do
