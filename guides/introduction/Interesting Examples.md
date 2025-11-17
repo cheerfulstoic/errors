@@ -117,7 +117,7 @@
   end
 ```
 
-The following is a refactor using the `triage` library. Aside from genenrally removing the boilerplate of handling `{:ok, _}` and `{:error, _}` wrappers, this refactor:
+The following is a refactor using the `triage` library. Aside from generally removing the boilerplate of handling `{:ok, _}` and `{:error, _}` wrappers, this refactor:
 
 * ... removes 52 lines of the original 108 lines code (48%)
 * ... removes two functions
