@@ -1,6 +1,6 @@
 # Interesting Examples
 
-# A single case statement
+## A single case statement
 
 [Source](https://github.com/b310-digital/mindwendel/blob/master/lib/mindwendel/services/chat_completions/chat_completions_service_impl.ex#L282-L301) from the mindwedel project.
 
@@ -49,7 +49,7 @@ ChatCompletions.create(openai_client, chat_completion)
 |> Triage.handle(fn _ -> :llm_request_failed end)
 ```
 
-# Two functions, two cases
+## Two functions, two cases
 
 [Source](https://github.com/anoma/anoma/blob/base/apps/anoma_client/lib/client/transactions/transactions.ex#L94-L116) from the anoma project.
 
