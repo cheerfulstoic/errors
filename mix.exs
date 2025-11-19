@@ -47,6 +47,7 @@ defmodule Triage.MixProject do
         "guides/introduction/Enumerating Errors.md",
         "guides/introduction/Control Flow.md",
         "guides/introduction/Comparison to with.md",
+        "guides/introduction/Claude SKILL.md",
         "guides/introduction/Interesting Examples.md",
         "guides/introduction/Philosophy.md",
         "guides/introduction/Open Questions.md",
