@@ -1,7 +1,7 @@
+# Helpers for working with Ecto changesets in Triage.
+
 defmodule Triage.Ecto do
-  @moduledoc """
-  Helpers for working with Ecto changesets in Triage.
-  """
+  @moduledoc false
 
   @doc """
   Formats an Ecto.Changeset's errors into a user-friendly error message.
