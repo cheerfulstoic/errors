@@ -118,15 +118,30 @@ defmodule Triage do
 
       iex> run!(fn -> :error end)
       :error
+
+      iex> run!(&function_to_try, retries: 2)
+      :error
   """
   @spec run!((-> any())) :: result()
-  def run!(func) do
-    case func.() do
-      :ok -> :ok
-      {:ok, _} = result -> result
-      :error -> :error
-      {:error, _} = result -> result
-      other -> {:ok, other}
+  @spec run!((-> any()), retries: non_neg_integer()) :: result()
+  def run!(func, opts \\ []) do
+    opts = validate_run_opts!(opts)
+
+    result = func.()
+
+    cond do
+      result == :ok or match?({:ok, _}, result) ->
+        result
+
+      result == :error or match?({:error, _}, result) ->
+        if opts[:retries] == 0 do
+          result
+        else
+          run!(func, Keyword.update!(opts, :retries, &(&1 - 1)))
+        end
+
+      true ->
+        {:ok, result}
     end
   end
 
@@ -150,13 +165,36 @@ defmodule Triage do
       iex> run(fn -> raise "boom" end)
       {:error, %Triage.WrappedError{}}
   """
-  @spec run((any() -> any())) :: result()
-  def run(func) do
+  @spec run((-> any())) :: result()
+  @spec run((-> any()), retries: non_neg_integer()) :: result()
+  def run(func, opts \\ []) do
+    opts = validate_run_opts!(opts)
+
     try do
-      run!(func)
+      run!(func, opts)
     rescue
       exception ->
-        {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+        if opts[:retries] == 0 do
+          {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+        else
+          run(func, Keyword.update!(opts, :retries, &(&1 - 1)))
+        end
+    end
+  end
+
+  defp validate_run_opts!(opts) do
+    NimbleOptions.validate(opts,
+      retries: [
+        type: :non_neg_integer,
+        default: 0
+      ]
+    )
+    |> case do
+      {:error, %NimbleOptions.ValidationError{} = error} ->
+        raise ArgumentError, Exception.message(error)
+
+      {:ok, opts} ->
+        opts
     end
   end
 
@@ -276,6 +314,9 @@ defmodule Triage do
 
       {:ok, _} = result ->
         result
+
+      nil ->
+        :error
 
       other ->
         {:error, other}

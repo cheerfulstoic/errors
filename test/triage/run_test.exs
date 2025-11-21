@@ -1,7 +1,7 @@
 defmodule Triage.RunTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
-  describe "run!/1" do
+  describe("run!/1") do
     test "Returns term as success" do
       start = 123
       assert Triage.run!(fn -> start * 2 end) == {:ok, 246}
@@ -56,6 +56,342 @@ defmodule Triage.RunTest do
                ~r<\*\* \(RuntimeError\) boom\n    \[CONTEXT\] test/triage/run_test\.exs:\d+: Triage\.RunTest\.-test run/1 An exception is raised/1-fun-0-/1>
 
       assert wrapped_error.result == %RuntimeError{message: "boom"}
+    end
+  end
+
+  describe "run!/2 with retries option" do
+    setup do
+      # Agent to track error count
+      {:ok, agent} = Agent.start_link(fn -> 0 end, name: :error_count_agent)
+      {:ok, agent: agent}
+    end
+
+    def fn_fails_times(number_of_errors, error, ok_value) do
+      fn ->
+        error_so_far = Agent.get_and_update(:error_count_agent, fn c -> {c, c + 1} end)
+
+        if error_so_far < number_of_errors do
+          if is_function(error) do
+            error.()
+          else
+            error
+          end
+        else
+          ok_value
+        end
+      end
+    end
+
+    test "retries invalid values" do
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: "0"),
+                   fn ->
+                     Triage.run!(fn -> {:ok, "success"} end,
+                       retries: "0"
+                     )
+                   end
+
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: 3.14),
+                   fn ->
+                     Triage.run!(fn -> {:ok, "success"} end,
+                       retries: 3.14
+                     )
+                   end
+
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: nil),
+                   fn ->
+                     Triage.run!(fn -> {:ok, "success"} end,
+                       retries: nil
+                     )
+                   end
+    end
+
+    test "retries: 0 - returns success immediately without retrying" do
+      result =
+        Triage.run!(
+          fn ->
+            {:ok, "success"}
+          end,
+          retries: 0
+        )
+
+      assert result == {:ok, "success"}
+    end
+
+    test "retries: 0 - returns error immediately without retrying" do
+      result =
+        Triage.run!(
+          fn ->
+            {:error, "failure"}
+          end,
+          retries: 0
+        )
+
+      assert result == {:error, "failure"}
+    end
+
+    test "retries: 1 - fails 1 times - atoms" do
+      result =
+        Triage.run!(
+          fn_fails_times(1, :error, :ok),
+          retries: 1
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 1 - fails 1 times - tuples" do
+      result =
+        Triage.run!(
+          fn_fails_times(1, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 1
+        )
+
+      assert result == {:ok, "yay!"}
+    end
+
+    test "retries: 1 - fails 1 times - exception" do
+      assert_raise RuntimeError, "this should not be caught", fn ->
+        Triage.run!(
+          fn_fails_times(1, fn -> raise "this should not be caught" end, :ok),
+          retries: 1
+        )
+      end
+    end
+
+    test "retries: 1 - fails 2 times - atoms" do
+      result =
+        Triage.run!(
+          fn_fails_times(2, :error, :ok),
+          retries: 1
+        )
+
+      assert result == :error
+    end
+
+    test "retries: 1 - fails 2 times - tuples" do
+      result =
+        Triage.run!(
+          fn_fails_times(2, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 1
+        )
+
+      assert result == {:error, "failure"}
+    end
+
+    test "retries: 5 - fails 5 times - atoms" do
+      result =
+        Triage.run!(
+          fn_fails_times(5, :error, :ok),
+          retries: 5
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 5 - fails 5 times - tuples" do
+      result =
+        Triage.run!(
+          fn_fails_times(5, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 5
+        )
+
+      assert result == {:ok, "yay!"}
+    end
+
+    test "retries: 5 - fails 6 times - atoms" do
+      result =
+        Triage.run!(
+          fn_fails_times(6, :error, :ok),
+          retries: 5
+        )
+
+      assert result == :error
+    end
+
+    test "retries: 5 - fails 6 times - tuples" do
+      result =
+        Triage.run!(
+          fn_fails_times(6, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 5
+        )
+
+      assert result == {:error, "failure"}
+    end
+  end
+
+  describe "run/2 with retries option" do
+    setup do
+      # Agent to track error count
+      {:ok, agent} = Agent.start_link(fn -> 0 end, name: :error_count_agent)
+      {:ok, agent: agent}
+    end
+
+    def fn_fails_times(number_of_errors, error_value, ok_value) do
+      fn ->
+        error_so_far = Agent.get_and_update(:error_count_agent, fn c -> {c, c + 1} end)
+
+        if error_so_far < number_of_errors do
+          error_value
+        else
+          ok_value
+        end
+      end
+    end
+
+    test "retries invalid values" do
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: "0"),
+                   fn ->
+                     Triage.run(fn -> {:ok, "success"} end,
+                       retries: "0"
+                     )
+                   end
+
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: 3.14),
+                   fn ->
+                     Triage.run(fn -> {:ok, "success"} end,
+                       retries: 3.14
+                     )
+                   end
+
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: nil),
+                   fn ->
+                     Triage.run(fn -> {:ok, "success"} end,
+                       retries: nil
+                     )
+                   end
+    end
+
+    test "retries: 0 - returns success immediately without retrying" do
+      result =
+        Triage.run(
+          fn ->
+            {:ok, "success"}
+          end,
+          retries: 0
+        )
+
+      assert result == {:ok, "success"}
+    end
+
+    test "retries: 0 - returns error immediately without retrying" do
+      result =
+        Triage.run(
+          fn ->
+            {:error, "failure"}
+          end,
+          retries: 0
+        )
+
+      assert result == {:error, "failure"}
+    end
+
+    test "retries: 1 - fails 1 times - atoms" do
+      result =
+        Triage.run(
+          fn_fails_times(1, :error, :ok),
+          retries: 1
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 1 - fails 1 times - tuples" do
+      result =
+        Triage.run(
+          fn_fails_times(1, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 1
+        )
+
+      assert result == {:ok, "yay!"}
+    end
+
+    test "retries: 1 - fails 1 times - exception" do
+      result =
+        Triage.run(
+          fn_fails_times(1, fn -> raise "this should be caught" end, :ok),
+          retries: 1
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 1 - fails 2 times - atoms" do
+      result =
+        Triage.run(
+          fn_fails_times(2, :error, :ok),
+          retries: 1
+        )
+
+      assert result == :error
+    end
+
+    test "retries: 1 - fails 2 times - tuples" do
+      result =
+        Triage.run(
+          fn_fails_times(2, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 1
+        )
+
+      assert result == {:error, "failure"}
+    end
+
+    test "retries: 1 - fails 2 times - exception" do
+      {:error, %Triage.WrappedError{} = wrapped_error} =
+        Triage.run(
+          fn_fails_times(2, fn -> raise "this should be caught" end, :ok),
+          retries: 1
+        )
+
+      assert wrapped_error.message =~
+               ~r<\*\* \(RuntimeError\) this should be caught\n    \[CONTEXT\] test/triage/run_test\.exs:\d+: Triage\.RunTest\.-fn_fails_times/3-fun-1-/1>
+
+      assert wrapped_error.result == %RuntimeError{message: "this should be caught"}
+    end
+
+    test "retries: 5 - fails 5 times - atoms" do
+      result =
+        Triage.run(
+          fn_fails_times(5, :error, :ok),
+          retries: 5
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 5 - fails 5 times - tuples" do
+      result =
+        Triage.run(
+          fn_fails_times(5, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 5
+        )
+
+      assert result == {:ok, "yay!"}
+    end
+
+    test "retries: 5 - fails 6 times - atoms" do
+      result =
+        Triage.run(
+          fn_fails_times(6, :error, :ok),
+          retries: 5
+        )
+
+      assert result == :error
+    end
+
+    test "retries: 5 - fails 6 times - tuples" do
+      result =
+        Triage.run(
+          fn_fails_times(6, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 5
+        )
+
+      assert result == {:error, "failure"}
     end
   end
 end

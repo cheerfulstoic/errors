@@ -50,6 +50,12 @@ defmodule Triage.ErrorThenTest do
       end
     end
 
+    test "nil returned from callback - returns :error" do
+      func = fn _ -> nil end
+
+      assert Triage.error_then({:error, "something"}, func) == :error
+    end
+
     test "error tuples are handled by the callback" do
       func = fn
         :unknown -> :not_found
