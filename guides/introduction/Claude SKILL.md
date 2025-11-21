@@ -29,19 +29,19 @@ Best practice is to never `import Triage` but always to refer to `Triage.functio
 
 ### Control Flow:
 
-- `Triage.then!/2` - Handling `:ok` results, allows exceptions to raise
-- `Triage.then/2` - Handling `:ok` results, catches exceptions and returns `{:error, Triage.WrappedError.t()}`
-- `Triage.then/1` - Executes callback function, catches exceptions and returns `{:error, Triage.WrappedError.t()}`
+- `Triage.ok_then!/2` - Handling `:ok` results, allows exceptions to raise
+- `Triage.ok_then/2` - Handling `:ok` results, catches exceptions and returns `{:error, Triage.WrappedError.t()}`
+- `Triage.ok_then/1` - Executes callback function, catches exceptions and returns `{:error, Triage.WrappedError.t()}`
 - `Triage.error_then/2` - error_then `:error` results
 
-VERY IMPORTANT NOTE ABOUT THE `then!/2`, `then/2`, and `error_then/2` FUNCTIONS
+VERY IMPORTANT NOTE ABOUT THE `ok_then!/2`, `ok_then/2`, and `error_then/2` FUNCTIONS
 
 The first argument to these functions must always be a result (`:ok`, `:error`, `{:ok, ...}`, `{:error, ...}`)
 
-The second argument is always a function which is given the value/reason of the `:ok`/:error` tuple. If the callback to `then` returns something other than a result, it automatically wraps with `{:ok, _}`. If the callback to `error_then` returns something other than a result, it automaticalyl wraps with `{:error, _}`
+The second argument is always a function which is given the value/reason of the `:ok`/:error` tuple. If the callback to `ok_then` returns something other than a result, it automatically wraps with `{:ok, _}`. If the callback to `error_then` returns something other than a result, it automaticalyl wraps with `{:error, _}`
 
 ```elixir
-|> Triage.then!(& &1 + 1)
+|> Triage.ok_then!(& &1 + 1)
 # If given `:error` result as first argument, the callback isn't executed and the argument is returned
 # If given `{:ok, 2}`, returns `{:ok, 3}`
 
@@ -50,11 +50,11 @@ The second argument is always a function which is given the value/reason of the 
 # If given `{:error, :something}` returns `{:error, :operation_failed}
 ```
 
-If the callback to `then` functions returns an `:error` result, the `:error` result is returned without wrapping in `{:ok, _}`
+If the callback to `ok_then` functions returns an `:error` result, the `:error` result is returned without wrapping in `{:ok, _}`
 
 If the callback to `error_then` functions returns an `:ok` result, the `:ok` result is returned without wrapping in `{:error, _}`
 
-### Context & Debugging:
+### Context & Debugging
 
 `Triage.wrap_context/2,3`
 
@@ -80,13 +80,11 @@ Takes in an error result (`{:error, _}`). Extracts user-friendly error messages 
 
 If a user-friendly error message can't be made from the error result, will log technical details about the error and provide a unique code for the user to pass onto support to find that log line.
 
-### Enumeration:
+### Enumeration
 
 `Triage.map_if/2` - Map with error short-circuiting
 
-
 `Triage.find_value/2` - Find first success
-
 
 `Triage.all/1` - Verify all are successful
 
@@ -172,12 +170,11 @@ end)
 
 ## Critical Rules to Remember
 
-When `then` / `then!` receives `:ok` as an error result, it passes `nil` to the callback.
+When `ok_then` / `ok_then!` receives `:ok` as an error result, it passes `nil` to the callback.
 
 When `error_then` receives `:error` as an error result, it passes `nil` to the callback.
 
-
-Don't always use `then` (not `then!`) when function might raise. Sometimes we want to raise an exception if the process should crash in that situation. Default to `then!` functions, especially when refactoring as it's the same behavior as before.
+Don't always use `ok_then` (not `ok_then!`) when function might raise. Sometimes we want to raise an exception if the process should crash in that situation. Default to `ok_then!` functions, especially when refactoring as it's the same behavior as before.
 
 Context is cumulative: Each `wrap_context` adds to the error context chain which adds details for `Triage.log` and `Triage.user_message`.
 
@@ -188,7 +185,8 @@ Be careful about using `wrap_context`: refactoring generally needs to be done at
 After refactoring:
 
 1. Ensure all result types are standard (`:ok`, `{:ok, ...}`, `:error`, `{:error, ...}`)
-2. Verify exception handling requirements (use `then` vs `then!` appropriately)
+2. Verify exception handling requirements (use `ok_then` vs `ok_then!` appropriately)
 3. Test error paths to ensure proper propagation
 4. Check for double-wrapping anti-pattern
+
 ```

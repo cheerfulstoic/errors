@@ -7,15 +7,15 @@ Sometimes you have an result and you want to transform it:
 * Transforming one error into another
 * Ignoring an error result (i.e. turning it into a success)
 
-In these cases you can use `Triage.then`, `Triage.then!` to error_then :ok results and `Triage.error_then` to error_then :error results.
+In these cases you can use `Triage.ok_then`, `Triage.ok_then!` to error_then :ok results and `Triage.error_then` to error_then :error results.
 
-The `then` functions work under the assumption that you're going to return another success, so whatever result you return will be wrapped in an `{:ok, _}` tuple when returned.  Similarly, `error_then` will wrap the result in an `{:error, _}` tuple.  But if you return `:error` results from `then` or `:ok` results from `error_then` then no wrapping occurs. This is so that you can have a flow where changes from the norm (:ok -> :error or :error -> :ok) stand out from the rest of the flow.
+The `ok_then` functions work under the assumption that you're going to return another success, so whatever result you return will be wrapped in an `{:ok, _}` tuple when returned.  Similarly, `error_then` will wrap the result in an `{:error, _}` tuple.  But if you return `:error` results from `ok_then` or `:ok` results from `error_then` then no wrapping occurs. This is so that you can have a flow where changes from the norm (:ok -> :error or :error -> :ok) stand out from the rest of the flow.
 
-## `then` and `then!`
+## `ok_then` and `ok_then!`
 
-The `then` functions provide a way to chain operations that return results. They allow you to build pipelines of transformations where errors automatically short-circuit the chain.
+The `ok_then` functions provide a way to chain operations that return results. They allow you to build pipelines of transformations where errors automatically short-circuit the chain.
 
-### `then/1` - Execute a function + error_then exceptions
+### `ok_then/1` - Execute a function + error_then exceptions
 
 Takes a zero-arity function and executes it.  The function can return `:ok`, `{:ok, term()}`, `:error`, or `{:error, term()}`, but any other value is treated as `{:ok, <value>}`.
 
@@ -23,43 +23,43 @@ If an exception is raised then a `{:ok, WrappedError.t()}` is returned which wra
 
 ```elixir
 # order_id is defined / passed in
-Triage.then(fn -> fetch_order_from_api(order_id) end)
+Triage.ok_then(fn -> fetch_order_from_api(order_id) end)
 ```
 
-### `then!/2` - Chaining operations + allowing exceptions to raise
+### `ok_then!/2` - Chaining operations + allowing exceptions to raise
 
-Takes a result and a function, executing the function only if the result is successful. Unlike `then/2`, this does **not** catch exceptions:
+Takes a result and a function, executing the function only if the result is successful. Unlike `ok_then/2`, this does **not** catch exceptions:
 
 ```elixir
 # Example: User registration pipeline
 fetch_order_from_api(order_id)
-|> Triage.then!(&validate_order/1)
-|> Triage.then!(fn order -> change_for_order(order, user.payment_info) end)
+|> Triage.ok_then!(&validate_order/1)
+|> Triage.ok_then!(fn order -> change_for_order(order, user.payment_info) end)
 # => {:ok, user} if all thens succeed
-# If any then returns an error, further thens are ignored and the error is passed through
+# If any ok_then returns an error, further thens are ignored and the error is passed through
 
 # When given :ok, passes nil to the function
-# Previous then returns `:ok`
-|> Triage.then!(fn nil -> send_notification() end)
+# Previous ok_then returns `:ok`
+|> Triage.ok_then!(fn nil -> send_notification() end)
 # => {:ok, notification_result}
 ```
 
-### `then/2` - Chaining operations + handling exceptions
+### `ok_then/2` - Chaining operations + handling exceptions
 
-Behaves like `then!/2` but catches exceptions and wraps them in a `WrappedError`:
+Behaves like `ok_then!/2` but catches exceptions and wraps them in a `WrappedError`:
 
 ```elixir
 # Example: Processing an API response
 {:ok, response}
-|> Triage.then(fn response -> Jason.decode!(response.body) end)  # Might raise
-|> Triage.then(&validate_schema/1)
-|> Triage.then(&transform_data/1)
+|> Triage.ok_then(fn response -> Jason.decode!(response.body) end)  # Might raise
+|> Triage.ok_then(&validate_schema/1)
+|> Triage.ok_then(&transform_data/1)
 # => {:ok, transformed_data}
 
 # Catches exceptions during parsing
 {:ok, config_string}
-|> Triage.then(&String.to_integer/1)  # Raises if not a valid integer
-|> Triage.then(&update_config/1)      # Never called if parsing raises
+|> Triage.ok_then(&String.to_integer/1)  # Raises if not a valid integer
+|> Triage.ok_then(&update_config/1)      # Never called if parsing raises
 |> Triage.log()
 ```
 
@@ -112,11 +112,11 @@ Jason.decode(string)
 |> Triage.error_then(fn error -> Exception.message(error) end)
 ```
 
-You can use `Triage.error_then/2` to transform the error based on pattern matching. Here's an example combining `then` and `error_then`:
+You can use `Triage.error_then/2` to transform the error based on pattern matching. Here's an example combining `ok_then` and `error_then`:
 
 ```elixir
 HTTPoison.get(url)
-|> Triage.then(fn
+|> Triage.ok_then(fn
   %HTTPoison.Response{status_code: 200, body: body} ->
     body
 
@@ -143,4 +143,4 @@ Jason.decode(string)
 ```
 
 > [!NOTE]
-> You might be wondering why you might use `then` / `error_then` functions instead of `with`.  If so, check out the [Comparison to with](comparison-to-with.html) section.
+> You might be wondering why you might use `ok_then` / `error_then` functions instead of `with`.  If so, check out the [Comparison to with](comparison-to-with.html) section.

@@ -22,7 +22,7 @@ The following case uses `reduce_while` to check two domains via DNS:
   end
 ```
 
-Using `find_value`, `then`, and `error_then` we can reduce the `reduce_while` boilerplate:
+Using `find_value`, `ok_then`, and `error_then` we can reduce the `reduce_while` boilerplate:
 
 ```elixir
   # Check A records of the the domains [domain, "www.#{domain}"]
@@ -36,7 +36,7 @@ Using `find_value`, `then`, and `error_then` we can reduce the `reduce_while` bo
       "www.#{domain_without_path}"
     ]
     |> Triage.find_value(&dns_lookup/1)
-    |> Triage.then(& "https://" <> unsplit_domain(&1, rest))
+    |> Triage.ok_then(& "https://" <> unsplit_domain(&1, rest))
     |> Triage.error_then(fn :no_a_record -> :domain_not_found end)
   end
 ```

@@ -15,9 +15,9 @@
     |> List.wrap()
     |> Triage.all(& byte_size(&1) == 2)
     # Changing the behavior so that `{:ok, filter}` is returned rather than just `filter`
-    |> Triage.then(fn _ -> filter end)
+    |> Triage.ok_then(fn _ -> filter end)
     # Idea: allow Errors functions to take a 0-arity callback if we want to ignore
-    # |> Triage.then(fn -> filter end)
+    # |> Triage.ok_then(fn -> filter end)
   end
 ```
 
