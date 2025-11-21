@@ -11,20 +11,22 @@ In these cases you can use `Triage.ok_then`, `Triage.ok_then!` to error_then :ok
 
 The `ok_then` functions work under the assumption that you're going to return another success, so whatever result you return will be wrapped in an `{:ok, _}` tuple when returned.  Similarly, `error_then` will wrap the result in an `{:error, _}` tuple.  But if you return `:error` results from `ok_then` or `:ok` results from `error_then` then no wrapping occurs. This is so that you can have a flow where changes from the norm (:ok -> :error or :error -> :ok) stand out from the rest of the flow.
 
-## `ok_then` and `ok_then!`
+## `run` and `ok_then` functions
 
 The `ok_then` functions provide a way to chain operations that return results. They allow you to build pipelines of transformations where errors automatically short-circuit the chain.
 
-### `ok_then/1` - Execute a function + error_then exceptions
+### `run!/1` - Execute a function + error_then exceptions
 
 Takes a zero-arity function and executes it.  The function can return `:ok`, `{:ok, term()}`, `:error`, or `{:error, term()}`, but any other value is treated as `{:ok, <value>}`.
 
-If an exception is raised then a `{:ok, WrappedError.t()}` is returned which wraps the exception.
-
 ```elixir
 # order_id is defined / passed in
-Triage.ok_then(fn -> fetch_order_from_api(order_id) end)
+Triage.run(fn -> fetch_order_from_api(order_id) end)
 ```
+
+### `run/1` - Execute a function + error_then exceptions
+
+Works like `run!/1`, but if an exception is raised then a `{:ok, WrappedError.t()}` is returned which wraps the exception.
 
 ### `ok_then!/2` - Chaining operations + allowing exceptions to raise
 

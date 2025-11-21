@@ -1,29 +1,5 @@
-defmodule Triage.ThenTest do
+defmodule Triage.OkThenTest do
   use ExUnit.Case
-
-  describe "ok_then!/1" do
-    test "Returns term as success" do
-      start = 123
-      assert Triage.ok_then!(fn -> start * 2 end) == {:ok, 246}
-    end
-
-    test "Returns :ok as :ok" do
-      assert Triage.ok_then!(fn -> :ok end) == :ok
-    end
-
-    test "Returns success with value as success" do
-      start = 123
-      assert Triage.ok_then!(fn -> {:ok, start * 2} end) == {:ok, 246}
-    end
-
-    test "Returns :error as :error" do
-      assert Triage.ok_then!(fn -> :error end) == :error
-    end
-
-    test "Returns error with value as error" do
-      assert Triage.ok_then!(fn -> {:error, "Test error"} end) == {:error, "Test error"}
-    end
-  end
 
   describe "ok_then!/2" do
     test "only allows result values for first argument" do
@@ -113,40 +89,6 @@ defmodule Triage.ThenTest do
         |> Triage.ok_then!(fn nil -> 42 end)
 
       assert result == {:ok, 42}
-    end
-  end
-
-  describe "ok_then/1" do
-    test "Returns term as success" do
-      start = 123
-      assert Triage.ok_then(fn -> start * 2 end) == {:ok, 246}
-    end
-
-    test "Returns :ok as :ok" do
-      assert Triage.ok_then(fn -> :ok end) == :ok
-    end
-
-    test "Returns success with value as success" do
-      start = 123
-      assert Triage.ok_then(fn -> {:ok, start * 2} end) == {:ok, 246}
-    end
-
-    test "Returns :error as :error" do
-      assert Triage.ok_then(fn -> :error end) == :error
-    end
-
-    test "Returns error with value as error" do
-      assert Triage.ok_then(fn -> {:error, "Test error"} end) == {:error, "Test error"}
-    end
-
-    test "An exception is raised" do
-      {:error, %Triage.WrappedError{} = wrapped_error} =
-        Triage.ok_then(fn -> raise "boom" end)
-
-      assert wrapped_error.message =~
-               ~r<\*\* \(RuntimeError\) boom\n    \[CONTEXT\] test/triage/ok_then_test\.exs:\d+: Triage\.ThenTest\.-test ok_then/1 An exception is raised/1-fun-0-/1>
-
-      assert wrapped_error.result == %RuntimeError{message: "boom"}
     end
   end
 

@@ -137,7 +137,7 @@ For more functions and examples, see the [Enumerating Errors section of the docs
 
 ```elixir
 HTTPoison.get(url)
-|> Triage.ok_then(fn
+|> Triage.run(fn
   %HTTPoison.Response{status_code: 200, body: body} ->
     body
 

@@ -98,7 +98,7 @@ defmodule Triage do
   (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`). If the function returns
   any other value, it wraps it in `{:ok, value}`.
 
-  This is the "unsafe" version that doesn't catch exceptions. Use `ok_then/1` for
+  This is the "unsafe" version that doesn't catch exceptions. Use `run/1` for
   exception handling.
 
   ## Parameters
@@ -107,26 +107,56 @@ defmodule Triage do
 
   ## Examples
 
-      iex> ok_then!(fn -> 42 end)
+      iex> run!(fn -> 42 end)
       {:ok, 42}
 
-      iex> ok_then!(fn -> {:ok, 42} end)
+      iex> run!(fn -> {:ok, 42} end)
       {:ok, 42}
 
-      iex> ok_then!(fn -> {:error, :not_found} end)
+      iex> run!(fn -> {:error, :not_found} end)
       {:error, :not_found}
 
-      iex> ok_then!(fn -> :error end)
+      iex> run!(fn -> :error end)
       :error
   """
-  @spec ok_then!((-> any())) :: result()
-  def ok_then!(func) do
+  @spec run!((-> any())) :: result()
+  def run!(func) do
     case func.() do
       :ok -> :ok
       {:ok, _} = result -> result
       :error -> :error
       {:error, _} = result -> result
       other -> {:ok, other}
+    end
+  end
+
+  @doc group: "Functions > Control Flow"
+  @doc """
+  Executes a function that returns a result tuple, with exception handling.
+
+  Calls the provided zero-arity function and ensures it returns a valid result.
+  If the function raises an exception, it catches it and returns
+  `{:error, %Triage.WrappedError{}}` with details about the exception.
+
+  ## Parameters
+
+    * `func` - A zero-arity function that returns a result
+
+  ## Examples
+
+      iex> run(fn -> {:ok, 42} end)
+      {:ok, 42}
+
+      iex> run(fn -> raise "boom" end)
+      {:error, %Triage.WrappedError{}}
+  """
+  @spec run((any() -> any())) :: result()
+  def run(func) do
+    try do
+      run!(func)
+    rescue
+      exception ->
+        {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
     end
   end
 
@@ -172,36 +202,6 @@ defmodule Triage do
 
   def ok_then!({:error, _} = result, _func), do: result
   def ok_then!(other, _), do: Validate.validate_result!(other, :strict)
-
-  @doc group: "Functions > Control Flow"
-  @doc """
-  Executes a function that returns a result tuple, with exception handling.
-
-  Calls the provided zero-arity function and ensures it returns a valid result.
-  If the function raises an exception, it catches it and returns
-  `{:error, %Triage.WrappedError{}}` with details about the exception.
-
-  ## Parameters
-
-    * `func` - A zero-arity function that returns a result
-
-  ## Examples
-
-      iex> ok_then(fn -> {:ok, 42} end)
-      {:ok, 42}
-
-      iex> ok_then(fn -> raise "boom" end)
-      {:error, %Triage.WrappedError{}}
-  """
-  @spec ok_then((any() -> any())) :: result()
-  def ok_then(func) do
-    try do
-      ok_then!(func)
-    rescue
-      exception ->
-        {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
-    end
-  end
 
   @doc group: "Functions > Control Flow"
   @doc """

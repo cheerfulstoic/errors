@@ -14,10 +14,10 @@ defmodule Triage.IntegrationTest do
     :ok
   end
 
-  describe "ok_then!/1 with wrap_context" do
+  describe "run!/1 + ok_then!/2 with wrap_context" do
     test "wraps error with context" do
       result =
-        Triage.ok_then!(fn -> {:error, "database connection failed"} end)
+        Triage.run!(fn -> {:error, "database connection failed"} end)
         |> Triage.wrap_context("Fetching user")
 
       assert {:error, %Triage.WrappedError{} = wrapped_error} = result
@@ -28,7 +28,7 @@ defmodule Triage.IntegrationTest do
 
     test "wraps error in multi-then chain" do
       result =
-        Triage.ok_then!(fn -> {:ok, 10} end)
+        Triage.run!(fn -> {:ok, 10} end)
         |> Triage.ok_then!(fn _ -> {:error, "calculation failed"} end)
         |> Triage.ok_then!(fn _ -> raise "Should not be called" end)
         |> Triage.wrap_context("Final calculation")
@@ -90,8 +90,8 @@ defmodule Triage.IntegrationTest do
       assert second_wrapped_error.metadata == %{}
 
       assert {Triage.IntegrationTest,
-              :"-test ok_then/2 with wrap_context wraps caught exception with context/1-fun-0-", _,
-              [file: ~c"test/triage/integration_test.exs", line: _]} =
+              :"-test ok_then/2 with wrap_context wraps caught exception with context/1-fun-0-",
+              _, [file: ~c"test/triage/integration_test.exs", line: _]} =
                List.first(second_wrapped_error.stacktrace)
 
       assert %ArgumentError{message: "invalid value"} = second_wrapped_error.result
@@ -133,7 +133,7 @@ defmodule Triage.IntegrationTest do
       log =
         capture_log([level: :error], fn ->
           result =
-            Triage.ok_then!(fn -> {:error, "database timeout"} end)
+            Triage.run!(fn -> {:error, "database timeout"} end)
             |> Triage.wrap_context("Fetching user data")
             |> Triage.log()
 
