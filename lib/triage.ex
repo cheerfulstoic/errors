@@ -248,7 +248,7 @@ defmodule Triage do
 
   When given result is `{:error, reason}`, the `reason` is passed into the callback
   function. The callback function can then return a new `reason` which will be
-  returned from `handle` wrapped in an `{:error, _}` tuple.
+  returned from `error_then` wrapped in an `{:error, _}` tuple.
 
   If `:error` is the given result, `nil` will be given to the callback function.
 
@@ -257,25 +257,25 @@ defmodule Triage do
 
   ## Examples
 
-      iex> ping_account_server() |> Triage.handle(fn _ -> :account_server_failure end)
+      iex> ping_account_server() |> Triage.error_then(fn _ -> :account_server_failure end)
       {:error, :account_server_failure}
 
-      iex> Triage.handle({:error, :unknown}, fn :unknown -> {:ok, @default_value} end)
+      iex> Triage.error_then({:error, :unknown}, fn :unknown -> {:ok, @default_value} end)
       {:ok, ...}
 
-      iex> Triage.handle(:ok, fn _ -> :not_used end)
+      iex> Triage.error_then(:ok, fn _ -> :not_used end)
       :ok
 
-      iex> Triage.handle({:ok, ...}, fn _ -> :not_used end)
+      iex> Triage.error_then({:ok, ...}, fn _ -> :not_used end)
       {:ok, 42}
 
-      iex> Triage.handle(:error, fn nil -> :handled end)
+      iex> Triage.error_then(:error, fn nil -> :handled end)
       {:error, :handled}
   """
-  @spec handle(result(), (any() -> any())) :: result()
-  def handle(:error, func), do: handle({:error, nil}, func)
+  @spec error_then(result(), (any() -> any())) :: result()
+  def error_then(:error, func), do: error_then({:error, nil}, func)
 
-  def handle({:error, reason}, func) do
+  def error_then({:error, reason}, func) do
     case func.(reason) do
       :ok ->
         :ok
@@ -288,7 +288,7 @@ defmodule Triage do
     end
   end
 
-  def handle(result, _) do
+  def error_then(result, _) do
     Validate.validate_result!(result, :strict)
 
     result

@@ -60,7 +60,7 @@
       # but that might be what you want!
       # Triage.then(fn -> Date.from_iso8601(params[key]) end)
       |> Triage.then(& {key, &1})
-      |> Triage.handle(fn _ -> "Failed to parse '#{key}' argument. Only ISO 8601 dates are allowed, e.g. `2019-09-07`, `2020-01-01`" end)
+      |> Triage.error_then(fn _ -> "Failed to parse '#{key}' argument. Only ISO 8601 dates are allowed, e.g. `2019-09-07`, `2020-01-01`" end)
     end)
     |> Triage.then(&Map.new/1)
   end

@@ -10,7 +10,7 @@ This package provides three levels of working with errors which are all **usable
 - **Result Logging**: Log errors (and optionally successes) with file/line information
 - **User-friendly errors**: Be able to collapse errors into a single user error message
 - **Error enumeration**: functions like `map_if`, `find_value`, and `all` help deal with enumerations over data where each iteration may succeed or fail.
-- **Error control flow**: `then` and `handle` functions help control and transform results
+- **Error control flow**: `then` and `error_then` functions help control and transform results
 
 Design goals:
 
@@ -133,7 +133,7 @@ For more functions and examples, see the [Enumerating Errors section of the docs
 
 ### Control Flow
 
-`triage`'s two control flow tools (`then` and `handle`) can both be shown via an HTTP request example:
+`triage`'s two control flow tools (`then` and `error_then`) can both be shown via an HTTP request example:
 
 ```elixir
 HTTPoison.get(url)
@@ -144,7 +144,7 @@ HTTPoison.get(url)
   %HTTPoison.Response{status_code: 404, body: body} ->
     {:error, "Server result not found"}
 end)
-|> Triage.handle(fn
+|> Triage.error_then(fn
     %HTTPoison.Error{reason: :nxdomain} ->
       "Server domain not found"
 
@@ -158,11 +158,11 @@ end)
 
 The `Triage.then` function works on `:ok` results, ignoring errors.  Values that are returned from the callback are automatically wrapped in an `{:ok, _}` tuple, though any `:error` or `{:error, term()}` returned will be returned as an error.
 
-The `Triage.handle` function is the opposite: working on `:error` reasons and returning new reasons to be wrapped in an `{:error, _}` tuple.  If an `:ok` or `{:ok, _}` result is returned, then the error is ignored and `Triage.handle` will return that success.
+The `Triage.error_then` function is the opposite: working on `:error` reasons and returning new reasons to be wrapped in an `{:error, _}` tuple.  If an `:ok` or `{:ok, _}` result is returned, then the error is ignored and `Triage.error_then` will return that success.
 
 Make sure to see the [Control Flow section of the docs](https://hexdocs.pm/triage/control-flow.html) for more information.
 
-Also, many people wonder why they shouldn't just use `with` instead of `then` / `handle`.  There is a [section in the docs](https://hexdocs.pm/triage/comparison-to-with.html) for that too!
+Also, many people wonder why they shouldn't just use `with` instead of `then` / `error_then`.  There is a [section in the docs](https://hexdocs.pm/triage/comparison-to-with.html) for that too!
 
 ## Installation
 

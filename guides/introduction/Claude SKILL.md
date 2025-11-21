@@ -32,27 +32,27 @@ Best practice is to never `import Triage` but always to refer to `Triage.functio
 - `Triage.then!/2` - Handling `:ok` results, allows exceptions to raise
 - `Triage.then/2` - Handling `:ok` results, catches exceptions and returns `{:error, Triage.WrappedError.t()}`
 - `Triage.then/1` - Executes callback function, catches exceptions and returns `{:error, Triage.WrappedError.t()}`
-- `Triage.handle/2` - Handle `:error` results
+- `Triage.error_then/2` - error_then `:error` results
 
-VERY IMPORTANT NOTE ABOUT THE `then!/2`, `then/2`, and `handle/2` FUNCTIONS
+VERY IMPORTANT NOTE ABOUT THE `then!/2`, `then/2`, and `error_then/2` FUNCTIONS
 
 The first argument to these functions must always be a result (`:ok`, `:error`, `{:ok, ...}`, `{:error, ...}`)
 
-The second argument is always a function which is given the value/reason of the `:ok`/:error` tuple. If the callback to `then` returns something other than a result, it automatically wraps with `{:ok, _}`. If the callback to `handle` returns something other than a result, it automaticalyl wraps with `{:error, _}`
+The second argument is always a function which is given the value/reason of the `:ok`/:error` tuple. If the callback to `then` returns something other than a result, it automatically wraps with `{:ok, _}`. If the callback to `error_then` returns something other than a result, it automaticalyl wraps with `{:error, _}`
 
 ```elixir
 |> Triage.then!(& &1 + 1)
 # If given `:error` result as first argument, the callback isn't executed and the argument is returned
 # If given `{:ok, 2}`, returns `{:ok, 3}`
 
-|> Triage.handle(fn _ -> :operation_failed end)
+|> Triage.error_then(fn _ -> :operation_failed end)
 # If given `:ok` result as first argument, the callback isn't executed and the argument is returned
 # If given `{:error, :something}` returns `{:error, :operation_failed}
 ```
 
 If the callback to `then` functions returns an `:error` result, the `:error` result is returned without wrapping in `{:ok, _}`
 
-If the callback to `handle` functions returns an `:ok` result, the `:ok` result is returned without wrapping in `{:error, _}`
+If the callback to `error_then` functions returns an `:ok` result, the `:ok` result is returned without wrapping in `{:error, _}`
 
 ### Context & Debugging:
 
@@ -154,7 +154,7 @@ end
 In order to keep the behavior the same you need to preserve that `MatchError` that might happen on any unspecified errors. So instead of this:
 
 ```elixir
-|> Triage.handle(fn
+|> Triage.error_then(fn
    {:cue_failed, err} -> {:invalid_input, err}
    reason -> reason
 end)
@@ -163,7 +163,7 @@ end)
 You would do this:
 
 ```elixir
-|> Triage.handle(fn
+|> Triage.error_then(fn
    {:cue_failed, err} -> {:invalid_input, err}
    :noun_not_a_valid_transaction -> :noun_not_a_valid_transaction
    :not_enough_transactions -> :not_enough_transactions
@@ -174,7 +174,7 @@ end)
 
 When `then` / `then!` receives `:ok` as an error result, it passes `nil` to the callback.
 
-When `handle` receives `:error` as an error result, it passes `nil` to the callback.
+When `error_then` receives `:error` as an error result, it passes `nil` to the callback.
 
 
 Don't always use `then` (not `then!`) when function might raise. Sometimes we want to raise an exception if the process should crash in that situation. Default to `then!` functions, especially when refactoring as it's the same behavior as before.
