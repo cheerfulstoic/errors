@@ -71,20 +71,21 @@ defmodule Triage.RunTest do
     :"error_count_agent_#{id}"
   end
 
-  # TODO: figure out case where error is function in the other section
   def fn_fails_times(number_of_errors, error, ok_value) do
-    fn ->
-      error_so_far = Agent.get_and_update(error_count_agent(), fn c -> {c, c + 1} end)
+    fn -> fails_times(number_of_errors, error, ok_value) end
+  end
 
-      if error_so_far < number_of_errors do
-        if is_function(error) do
-          error.()
-        else
-          error
-        end
+  def fails_times(number_of_errors, error, ok_value) do
+    error_so_far = Agent.get_and_update(error_count_agent(), fn c -> {c, c + 1} end)
+
+    if error_so_far < number_of_errors do
+      if is_function(error) do
+        error.()
       else
-        ok_value
+        error
       end
+    else
+      ok_value
     end
   end
 
@@ -352,7 +353,7 @@ defmodule Triage.RunTest do
         )
 
       assert wrapped_error.message =~
-               ~r<\*\* \(RuntimeError\) this should be caught\n    \[CONTEXT\] test/triage/run_test\.exs:\d+: Triage\.RunTest\.-fn_fails_times/3-fun-1-/1>
+               ~r<\*\* \(RuntimeError\) this should be caught\n    \[CONTEXT\] test/triage/run_test\.exs:\d+: Triage\.RunTest\.-fn_fails_times/3-fun-0-/1>
 
       assert wrapped_error.result == %RuntimeError{message: "this should be caught"}
     end

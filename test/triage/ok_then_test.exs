@@ -189,20 +189,22 @@ defmodule Triage.OkThenTest do
 
   def fn_fails_times(number_of_errors, error, ok_value) do
     # We don't care about the input when testing for retries
-    fn _ ->
-      id = Process.get(:error_count_agent_id)
+    fn _ -> fails_times(number_of_errors, error, ok_value) end
+  end
 
-      error_so_far = Agent.get_and_update(:"error_count_agent_#{id}", fn c -> {c, c + 1} end)
+  def fails_times(number_of_errors, error, ok_value) do
+    id = Process.get(:error_count_agent_id)
 
-      if error_so_far < number_of_errors do
-        if is_function(error) do
-          error.()
-        else
-          error
-        end
+    error_so_far = Agent.get_and_update(:"error_count_agent_#{id}", fn c -> {c, c + 1} end)
+
+    if error_so_far < number_of_errors do
+      if is_function(error) do
+        error.()
       else
-        ok_value
+        error
       end
+    else
+      ok_value
     end
   end
 
@@ -477,7 +479,7 @@ defmodule Triage.OkThenTest do
         )
 
       assert wrapped_error.message =~
-               ~r<\*\* \(RuntimeError\) this should be caught\n    \[CONTEXT\] test/triage/ok_then_test\.exs:\d+: Triage\.OkThenTest\.-fn_fails_times/3-fun-1-/1>
+               ~r<\*\* \(RuntimeError\) this should be caught\n    \[CONTEXT\] test/triage/ok_then_test\.exs:\d+: Triage\.OkThenTest\.-fn_fails_times/3-fun-0-/1>
 
       assert wrapped_error.result == %RuntimeError{message: "this should be caught"}
     end

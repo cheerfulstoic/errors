@@ -199,7 +199,6 @@ defimpl Inspect, for: Triage.WrappedError do
     contexts_doc =
       errors
       |> Enum.map(&(Triage.WrappedError.context_desc(&1.context) || inspect(&1.metadata)))
-      |> IO.inspect()
       |> Enum.intersperse(" => ")
       |> concat()
 
