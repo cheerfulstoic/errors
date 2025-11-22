@@ -76,21 +76,6 @@ defmodule Triage.WrappedError do
     "#{message}\n#{context_string}"
   end
 
-  def context_desc(context) do
-    cond do
-      is_function(context) ->
-        function_info = Function.info(context)
-
-        "#{inspect(function_info[:module])}.#{function_info[:name]}/1"
-
-      is_binary(context) ->
-        context
-
-      is_nil(context) ->
-        nil
-    end
-  end
-
   def message(%__MODULE__{} = error) when is_function(error.context) do
     errors = unwrap(error)
 
@@ -117,6 +102,21 @@ defmodule Triage.WrappedError do
     message = Results.details(List.last(errors).result).message
 
     "#{message}\n#{context_string}"
+  end
+
+  def context_desc(context) do
+    cond do
+      is_function(context) ->
+        function_info = Function.info(context)
+
+        "#{inspect(function_info[:module])}.#{function_info[:name]}/1"
+
+      is_binary(context) ->
+        context
+
+      is_nil(context) ->
+        nil
+    end
   end
 
   def unwrap(%__MODULE__{result: {:error, %__MODULE__{} = nested_error}} = error) do

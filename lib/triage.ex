@@ -127,22 +127,11 @@ defmodule Triage do
   def run!(func, opts \\ []) do
     opts = validate_run_opts!(opts)
 
-    result = func.()
-
-    cond do
-      result == :ok or match?({:ok, _}, result) ->
-        result
-
-      result == :error or match?({:error, _}, result) ->
-        if opts[:retries] == 0 do
-          result
-        else
-          run!(func, Keyword.update!(opts, :retries, &(&1 - 1)))
-        end
-
-      true ->
-        {:ok, result}
-    end
+    ok_then!(
+      {:ok, :test},
+      fn _ -> func.() end,
+      opts
+    )
   end
 
   @doc group: "Functions > Control Flow"
@@ -183,19 +172,8 @@ defmodule Triage do
   end
 
   defp validate_run_opts!(opts) do
-    NimbleOptions.validate(opts,
-      retries: [
-        type: :non_neg_integer,
-        default: 0
-      ]
-    )
-    |> case do
-      {:error, %NimbleOptions.ValidationError{} = error} ->
-        raise ArgumentError, Exception.message(error)
-
-      {:ok, opts} ->
-        opts
-    end
+    # Same logic (for now)
+    validate_ok_then_opts!(opts)
   end
 
   @doc group: "Functions > Control Flow"
@@ -222,24 +200,38 @@ defmodule Triage do
       {:error, :not_found}
   """
   @spec ok_then!(result(), (any() -> any())) :: result()
-  def ok_then!(:ok, func) do
-    ok_then!({:ok, nil}, func)
+  @spec ok_then!(result(), (any() -> any()), retries: non_neg_integer()) :: result()
+  def ok_then!(result, func, opts \\ [])
+
+  def ok_then!(:ok, func, opts) do
+    ok_then!({:ok, nil}, func, opts)
   end
 
-  def ok_then!({:ok, value}, func) do
-    case func.(value) do
-      :ok -> :ok
-      {:ok, _} = result -> result
-      :error -> :error
-      {:error, _} = result -> result
-      other -> {:ok, other}
+  def ok_then!({:ok, value}, func, opts) do
+    opts = validate_ok_then_opts!(opts)
+
+    result = func.(value)
+
+    cond do
+      result == :ok or match?({:ok, _}, result) ->
+        result
+
+      result == :error or match?({:error, _}, result) ->
+        if opts[:retries] == 0 do
+          result
+        else
+          ok_then!({:ok, value}, func, Keyword.update!(opts, :retries, &(&1 - 1)))
+        end
+
+      true ->
+        {:ok, result}
     end
   end
 
-  def ok_then!(:error, _func), do: :error
+  def ok_then!(:error, _func, _opts), do: :error
 
-  def ok_then!({:error, _} = result, _func), do: result
-  def ok_then!(other, _), do: Validate.validate_result!(other, :strict)
+  def ok_then!({:error, _} = result, _func, _opts), do: result
+  def ok_then!(other, _, _), do: Validate.validate_result!(other, :strict)
 
   @doc group: "Functions > Control Flow"
   @doc """
@@ -265,12 +257,37 @@ defmodule Triage do
       {:error, %Triage.WrappedError{}}
   """
   @spec ok_then(result(), (any() -> any())) :: result()
-  def ok_then(result, func) do
+  @spec ok_then(result(), (any() -> any()), retries: non_neg_integer()) :: result()
+  def ok_then(result, func, opts \\ [])
+
+  def ok_then(result, func, opts) do
+    opts = validate_ok_then_opts!(opts)
+
     try do
-      ok_then!(result, func)
+      ok_then!(result, func, opts)
     rescue
       exception ->
-        {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+        if opts[:retries] == 0 do
+          {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+        else
+          ok_then(result, func, Keyword.update!(opts, :retries, &(&1 - 1)))
+        end
+    end
+  end
+
+  defp validate_ok_then_opts!(opts) do
+    NimbleOptions.validate(opts,
+      retries: [
+        type: :non_neg_integer,
+        default: 0
+      ]
+    )
+    |> case do
+      {:error, %NimbleOptions.ValidationError{} = error} ->
+        raise ArgumentError, Exception.message(error)
+
+      {:ok, opts} ->
+        opts
     end
   end
 

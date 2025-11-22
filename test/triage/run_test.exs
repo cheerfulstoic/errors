@@ -1,6 +1,12 @@
 defmodule Triage.RunTest do
   use ExUnit.Case
 
+  setup do
+    Process.put(:error_count_agent_id, System.unique_integer([:positive]))
+
+    :ok
+  end
+
   describe("run!/1") do
     test "Returns term as success" do
       start = 123
@@ -59,27 +65,35 @@ defmodule Triage.RunTest do
     end
   end
 
+  def error_count_agent do
+    id = Process.get(:error_count_agent_id)
+
+    :"error_count_agent_#{id}"
+  end
+
+  # TODO: figure out case where error is function in the other section
+  def fn_fails_times(number_of_errors, error, ok_value) do
+    fn ->
+      error_so_far = Agent.get_and_update(error_count_agent(), fn c -> {c, c + 1} end)
+
+      if error_so_far < number_of_errors do
+        if is_function(error) do
+          error.()
+        else
+          error
+        end
+      else
+        ok_value
+      end
+    end
+  end
+
   describe "run!/2 with retries option" do
     setup do
       # Agent to track error count
-      {:ok, agent} = Agent.start_link(fn -> 0 end, name: :error_count_agent)
-      {:ok, agent: agent}
-    end
+      {:ok, _} = Agent.start_link(fn -> 0 end, name: error_count_agent())
 
-    def fn_fails_times(number_of_errors, error, ok_value) do
-      fn ->
-        error_so_far = Agent.get_and_update(:error_count_agent, fn c -> {c, c + 1} end)
-
-        if error_so_far < number_of_errors do
-          if is_function(error) do
-            error.()
-          else
-            error
-          end
-        else
-          ok_value
-        end
-      end
+      :ok
     end
 
     test "retries invalid values" do
@@ -225,20 +239,9 @@ defmodule Triage.RunTest do
   describe "run/2 with retries option" do
     setup do
       # Agent to track error count
-      {:ok, agent} = Agent.start_link(fn -> 0 end, name: :error_count_agent)
-      {:ok, agent: agent}
-    end
+      {:ok, _} = Agent.start_link(fn -> 0 end, name: error_count_agent())
 
-    def fn_fails_times(number_of_errors, error_value, ok_value) do
-      fn ->
-        error_so_far = Agent.get_and_update(:error_count_agent, fn c -> {c, c + 1} end)
-
-        if error_so_far < number_of_errors do
-          error_value
-        else
-          ok_value
-        end
-      end
+      :ok
     end
 
     test "retries invalid values" do

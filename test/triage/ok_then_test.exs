@@ -1,6 +1,12 @@
 defmodule Triage.OkThenTest do
   use ExUnit.Case
 
+  setup do
+    Process.put(:error_count_agent_id, System.unique_integer([:positive]))
+
+    :ok
+  end
+
   describe "ok_then!/2" do
     test "only allows result values for first argument" do
       assert_raise ArgumentError,
@@ -172,6 +178,352 @@ defmodule Triage.OkThenTest do
 
       assert reason.__struct__ == CustomError
       assert reason.message == "custom error"
+    end
+  end
+
+  def error_count_agent do
+    id = Process.get(:error_count_agent_id)
+
+    :"error_count_agent_#{id}"
+  end
+
+  def fn_fails_times(number_of_errors, error, ok_value) do
+    # We don't care about the input when testing for retries
+    fn _ ->
+      id = Process.get(:error_count_agent_id)
+
+      error_so_far = Agent.get_and_update(:"error_count_agent_#{id}", fn c -> {c, c + 1} end)
+
+      if error_so_far < number_of_errors do
+        if is_function(error) do
+          error.()
+        else
+          error
+        end
+      else
+        ok_value
+      end
+    end
+  end
+
+  describe "ok_then!/3 with retries option" do
+    setup do
+      # Agent to track error count
+      {:ok, _} = Agent.start_link(fn -> 0 end, name: error_count_agent())
+
+      :ok
+    end
+
+    test "retries invalid values" do
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: "0"),
+                   fn ->
+                     Triage.ok_then!(:ok, fn _ -> {:ok, "success"} end, retries: "0")
+                   end
+
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: 3.14),
+                   fn ->
+                     Triage.ok_then!(:ok, fn _ -> {:ok, "success"} end, retries: 3.14)
+                   end
+
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: nil),
+                   fn ->
+                     Triage.ok_then!(:ok, fn _ -> {:ok, "success"} end, retries: nil)
+                   end
+    end
+
+    test "retries: 0 - returns success immediately without retrying" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn _ ->
+            {:ok, "success"}
+          end,
+          retries: 0
+        )
+
+      assert result == {:ok, "success"}
+    end
+
+    test "retries: 0 - returns error immediately without retrying" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn _ ->
+            {:error, "failure"}
+          end,
+          retries: 0
+        )
+
+      assert result == {:error, "failure"}
+    end
+
+    test "retries: 1 - fails 1 times - atoms" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn_fails_times(1, :error, :ok),
+          retries: 1
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 1 - fails 1 times - tuples" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn_fails_times(1, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 1
+        )
+
+      assert result == {:ok, "yay!"}
+    end
+
+    test "retries: 1 - fails 1 times - exception" do
+      assert_raise RuntimeError, "this should not be caught", fn ->
+        Triage.ok_then!(
+          :ok,
+          fn_fails_times(1, fn -> raise "this should not be caught" end, :ok),
+          retries: 1
+        )
+      end
+    end
+
+    test "retries: 1 - fails 2 times - atoms" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn_fails_times(2, :error, :ok),
+          retries: 1
+        )
+
+      assert result == :error
+    end
+
+    test "retries: 1 - fails 2 times - tuples" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn_fails_times(2, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 1
+        )
+
+      assert result == {:error, "failure"}
+    end
+
+    test "retries: 5 - fails 5 times - atoms" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn_fails_times(5, :error, :ok),
+          retries: 5
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 5 - fails 5 times - tuples" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn_fails_times(5, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 5
+        )
+
+      assert result == {:ok, "yay!"}
+    end
+
+    test "retries: 5 - fails 6 times - atoms" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn_fails_times(6, :error, :ok),
+          retries: 5
+        )
+
+      assert result == :error
+    end
+
+    test "retries: 5 - fails 6 times - tuples" do
+      result =
+        Triage.ok_then!(
+          :ok,
+          fn_fails_times(6, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 5
+        )
+
+      assert result == {:error, "failure"}
+    end
+  end
+
+  describe "ok_then/3 with retries option" do
+    setup do
+      # Agent to track error count
+      {:ok, _} = Agent.start_link(fn -> 0 end, name: error_count_agent())
+
+      :ok
+    end
+
+    test "retries invalid values" do
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: "0"),
+                   fn ->
+                     Triage.ok_then(:ok, fn _ -> {:ok, "success"} end, retries: "0")
+                   end
+
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: 3.14),
+                   fn ->
+                     Triage.ok_then(:ok, fn _ -> {:ok, "success"} end, retries: 3.14)
+                   end
+
+      assert_raise ArgumentError,
+                   ~s(invalid value for :retries option: expected non negative integer, got: nil),
+                   fn ->
+                     Triage.ok_then(:ok, fn _ -> {:ok, "success"} end, retries: nil)
+                   end
+    end
+
+    test "retries: 0 - returns success immediately without retrying" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn _ ->
+            {:ok, "success"}
+          end,
+          retries: 0
+        )
+
+      assert result == {:ok, "success"}
+    end
+
+    test "retries: 0 - returns error immediately without retrying" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn _ ->
+            {:error, "failure"}
+          end,
+          retries: 0
+        )
+
+      assert result == {:error, "failure"}
+    end
+
+    test "retries: 1 - fails 1 times - atoms" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(1, :error, :ok),
+          retries: 1
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 1 - fails 1 times - tuples" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(1, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 1
+        )
+
+      assert result == {:ok, "yay!"}
+    end
+
+    test "retries: 1 - fails 1 times - exception" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(1, fn -> raise "this should be caught" end, :ok),
+          retries: 1
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 1 - fails 2 times - atoms" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(2, :error, :ok),
+          retries: 1
+        )
+
+      assert result == :error
+    end
+
+    test "retries: 1 - fails 2 times - tuples" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(2, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 1
+        )
+
+      assert result == {:error, "failure"}
+    end
+
+    test "retries: 1 - fails 2 times - exception" do
+      {:error, %Triage.WrappedError{} = wrapped_error} =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(2, fn -> raise "this should be caught" end, :ok),
+          retries: 1
+        )
+
+      assert wrapped_error.message =~
+               ~r<\*\* \(RuntimeError\) this should be caught\n    \[CONTEXT\] test/triage/ok_then_test\.exs:\d+: Triage\.OkThenTest\.-fn_fails_times/3-fun-1-/1>
+
+      assert wrapped_error.result == %RuntimeError{message: "this should be caught"}
+    end
+
+    test "retries: 5 - fails 5 times - atoms" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(5, :error, :ok),
+          retries: 5
+        )
+
+      assert result == :ok
+    end
+
+    test "retries: 5 - fails 5 times - tuples" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(5, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 5
+        )
+
+      assert result == {:ok, "yay!"}
+    end
+
+    test "retries: 5 - fails 6 times - atoms" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(6, :error, :ok),
+          retries: 5
+        )
+
+      assert result == :error
+    end
+
+    test "retries: 5 - fails 6 times - tuples" do
+      result =
+        Triage.ok_then(
+          :ok,
+          fn_fails_times(6, {:error, "failure"}, {:ok, "yay!"}),
+          retries: 5
+        )
+
+      assert result == {:error, "failure"}
     end
   end
 end

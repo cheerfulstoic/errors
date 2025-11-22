@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `retries` option for `run!/2` and `run/2`
+- `retries` option for `run!/2`,`run/2`, `ok_then!/3`, and `ok_then/3`
 
 ## [0.4.4] - 2025-11-19
 
