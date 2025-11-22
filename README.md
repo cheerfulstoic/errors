@@ -171,7 +171,7 @@ Add `triage` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:triage, "~> 0.4.4"}
+    {:triage, "~> 0.5.0"}
   ]
 end
 ```
