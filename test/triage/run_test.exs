@@ -1,5 +1,5 @@
 defmodule Triage.RunTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case
 
   describe("run!/1") do
     test "Returns term as success" do
