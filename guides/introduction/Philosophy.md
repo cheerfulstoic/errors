@@ -10,7 +10,7 @@ This library came out of a general desire of seeing the same need for patterns o
 
 ## The Principle of Least Surprise
 
-As much as possible tools in the `triage` library should be named according to the [principle of least surprise](https://en.wikipedia.org/wiki/Principle_of_least_astonishment). For example, `Triage.map_if` is named because it does a `map` based on `if`logic, `Triage.find_value` is meant to work like `Enum.find_value`, and  `Triage.then` is meant to work similarly to Elixir's `Kernel.then`.
+As much as possible tools in the `triage` library should be named according to the [principle of least surprise](https://en.wikipedia.org/wiki/Principle_of_least_astonishment). For example, `Triage.map_if` is named because it does a `map` based on `if`logic, `Triage.find_value` is meant to work like `Enum.find_value`, and  `Triage.ok_then`/`Triage.error_then` are meant to work similarly to Elixir's `Kernel.then`.
 
 Because naming is so important, feedback and ideas on the API are very welcome!
 

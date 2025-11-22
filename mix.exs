@@ -73,7 +73,8 @@ defmodule Triage.MixProject do
       {:credo, "~> 1.7", only: :dev},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ecto, "~> 3.0", optional: true},
-      {:ex_doc, "~> 0.39", only: :dev, runtime: false, warn_if_outdated: true}
+      {:ex_doc, "~> 0.39", only: :dev, runtime: false, warn_if_outdated: true},
+      {:nimble_options, "~> 1.0"}
     ]
   end
 end

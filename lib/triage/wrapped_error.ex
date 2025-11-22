@@ -63,22 +63,8 @@ defmodule Triage.WrappedError do
     context_string =
       errors
       |> Enum.map_join("\n", fn error ->
-        context_desc =
-          cond do
-            is_function(error.context) ->
-              function_info = Function.info(error.context)
-
-              "#{inspect(function_info[:module])}.#{function_info[:name]}/1"
-
-            is_binary(error.context) ->
-              error.context
-
-            is_nil(error.context) ->
-              nil
-          end
-
         parts_string =
-          [format_line(error), context_desc, format_metadata(error)]
+          [format_line(error), context_desc(error.context), format_metadata(error)]
           |> Enum.reject(&is_nil/1)
           |> Enum.join(" ")
 
@@ -116,6 +102,21 @@ defmodule Triage.WrappedError do
     message = Results.details(List.last(errors).result).message
 
     "#{message}\n#{context_string}"
+  end
+
+  def context_desc(context) do
+    cond do
+      is_function(context) ->
+        function_info = Function.info(context)
+
+        "#{inspect(function_info[:module])}.#{function_info[:name]}/1"
+
+      is_binary(context) ->
+        context
+
+      is_nil(context) ->
+        nil
+    end
   end
 
   def unwrap(%__MODULE__{result: {:error, %__MODULE__{} = nested_error}} = error) do
@@ -197,7 +198,7 @@ defimpl Inspect, for: Triage.WrappedError do
 
     contexts_doc =
       errors
-      |> Enum.map(&(&1.context || inspect(&1.metadata)))
+      |> Enum.map(&(Triage.WrappedError.context_desc(&1.context) || inspect(&1.metadata)))
       |> Enum.intersperse(" => ")
       |> concat()
 

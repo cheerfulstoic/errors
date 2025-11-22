@@ -29,7 +29,7 @@
       )
     end)
     # if reverse is important...
-    |> Triage.then(&Enum.reverse/1)
+    |> Triage.ok_then(&Enum.reverse/1)
   end
 ```
 

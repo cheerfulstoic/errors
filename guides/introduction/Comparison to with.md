@@ -108,13 +108,13 @@ On the other hand, some people might not be comfortable:
 ```elixir
 defp file_read(path) do
   File.read(path)
-  |> Triage.handle(fn _ -> :badfile end)
+  |> Triage.error_then(fn _ -> :badfile end)
 end
 
 defp base_decode64(contents) do
   Base.decode64(contents)
-  # Note: handle/2 receives `nil` for bare `:error` atom results
-  |> Triage.handle(fn nil -> :badencoding end)
+  # Note: error_then/2 receives `nil` for bare `:error` atom results
+  |> Triage.error_then(fn nil -> :badencoding end)
 end
 ```
 
@@ -155,7 +155,7 @@ This definitely requires a lot from the reader if they need to figure out which 
 * `fetch_job` returns `{:ok, job}` or `nil`
 * `resolve_conflict` returns `{:ok, job}`, `{:ok, Ecto.Schema.t()}`, `{:error, Ecto.Changeset.t()}`
 
-Aside from having a complex `else` clause, two of the functions return `nil` in some cases. If a function returns `:ok` / `{:ok, _}`, it's clearer to make sure it's always returning some sort of `:ok` / `:error` result. In this case we could return `{:error, :not_found}` to indicate the failure. So, how might we put this code another way? We can use the `Triage.then!/2` and `Triage.handle/2` functions, which work with `:ok` and `:error` results, respectively:
+Aside from having a complex `else` clause, two of the functions return `nil` in some cases. If a function returns `:ok` / `{:ok, _}`, it's clearer to make sure it's always returning some sort of `:ok` / `:error` result. In this case we could return `{:error, :not_found}` to indicate the failure. So, how might we put this code another way? We can use the `Triage.ok_then!/2` and `Triage.error_then/2` functions, which work with `:ok` and `:error` results, respectively:
 
 ```elixir
 defp insert_unique(conf, changeset, opts) do
@@ -163,19 +163,19 @@ defp insert_unique(conf, changeset, opts) do
 
   # Need to refactor `unique_query` to return `{:ok, {query, lock_key}}`
   unique_query(changeset)
-  |> Triage.then!(fn {query, lock_key} ->
+  |> Triage.ok_then!(fn {query, lock_key} ->
     acquire_lock(conf, lock_key)
-    |> Triage.handle(fn
+    |> Triage.error_then(fn
       :locked ->
         Changeset.apply_action(changeset, :insert)
-        |> Triage.then!(& %{&1 | conflict?: true})
+        |> Triage.ok_then!(& %{&1 | conflict?: true})
     end)
-    |> Triage.then!(fn _ -> fetch_job(conf, query, opts) end)
+    |> Triage.ok_then!(fn _ -> fetch_job(conf, query, opts) end)
   end)
-  |> Triage.then!(& resolve_conflict(conf, &1, changeset, opts))
+  |> Triage.ok_then!(& resolve_conflict(conf, &1, changeset, opts))
   # Assuming we refactor `unique_query` and `fetch_job` to return `{:error, :not_found}` instead of `nil`
-  |> Triage.then!(fn job -> %{job | conflict?: true} end)
-  |> Triage.handle(fn :not_found -> {:ok, Repo.insert(conf, changeset, opts)} end)
+  |> Triage.ok_then!(fn job -> %{job | conflict?: true} end)
+  |> Triage.error_then(fn :not_found -> {:ok, Repo.insert(conf, changeset, opts)} end)
 end
 ```
 
@@ -185,7 +185,7 @@ At first glance this doesn't seem as clean because it doesn't have all of the ha
 * Tuples are only specified when we're turning a success into an error or vice-versa which makes those special cases stand out.
 * Error handling is done at the soonest point that it can be handled (just after the call or after calls that might share the same error).
 * Nesting makes it clear where the `query` variable is needed.
-* We can use `then` (not used above, but used instead of `then!`) to catch errors, if we don't want a particular step to crash.
+* We can use `ok_then` (not used above, but used instead of `ok_then!`) to catch errors, if we don't want a particular step to crash.
 
 -----
 

@@ -14,10 +14,10 @@ defmodule Triage.IntegrationTest do
     :ok
   end
 
-  describe "then!/1 with wrap_context" do
+  describe "run!/1 + ok_then!/2 with wrap_context" do
     test "wraps error with context" do
       result =
-        Triage.then!(fn -> {:error, "database connection failed"} end)
+        Triage.run!(fn -> {:error, "database connection failed"} end)
         |> Triage.wrap_context("Fetching user")
 
       assert {:error, %Triage.WrappedError{} = wrapped_error} = result
@@ -28,9 +28,9 @@ defmodule Triage.IntegrationTest do
 
     test "wraps error in multi-then chain" do
       result =
-        Triage.then!(fn -> {:ok, 10} end)
-        |> Triage.then!(fn _ -> {:error, "calculation failed"} end)
-        |> Triage.then!(fn _ -> raise "Should not be called" end)
+        Triage.run!(fn -> {:ok, 10} end)
+        |> Triage.ok_then!(fn _ -> {:error, "calculation failed"} end)
+        |> Triage.ok_then!(fn _ -> raise "Should not be called" end)
         |> Triage.wrap_context("Final calculation")
 
       assert {:error, %Triage.WrappedError{} = wrapped_error} = result
@@ -40,11 +40,11 @@ defmodule Triage.IntegrationTest do
     end
   end
 
-  describe "then!/2 with wrap_context" do
+  describe "ok_then!/2 with wrap_context" do
     test "wraps error with context" do
       result =
         {:error, "user not found"}
-        |> Triage.then!(fn _ -> raise "Should not be called" end)
+        |> Triage.ok_then!(fn _ -> raise "Should not be called" end)
         |> Triage.wrap_context("Fetching user")
 
       assert {:error, %Triage.WrappedError{} = wrapped_error} = result
@@ -56,9 +56,9 @@ defmodule Triage.IntegrationTest do
     test "chains multiple wrap_context calls" do
       result =
         {:ok, "user@example.com"}
-        |> Triage.then!(fn email -> {:error, "invalid email: #{email}"} end)
+        |> Triage.ok_then!(fn email -> {:error, "invalid email: #{email}"} end)
         |> Triage.wrap_context("first")
-        |> Triage.then!(fn _ -> raise "Should not be called" end)
+        |> Triage.ok_then!(fn _ -> raise "Should not be called" end)
         |> Triage.wrap_context("second")
 
       assert {:error, %Triage.WrappedError{} = wrapped_error} = result
@@ -72,13 +72,13 @@ defmodule Triage.IntegrationTest do
     end
   end
 
-  describe "then/2 with wrap_context" do
+  describe "ok_then/2 with wrap_context" do
     test "wraps caught exception with context" do
       func = fn _ -> raise ArgumentError, "invalid value" end
 
       result =
         {:ok, 10}
-        |> Triage.then(func)
+        |> Triage.ok_then(func)
         |> Triage.wrap_context("Processing payment")
 
       assert {:error, %Triage.WrappedError{} = wrapped_error} = result
@@ -90,8 +90,8 @@ defmodule Triage.IntegrationTest do
       assert second_wrapped_error.metadata == %{}
 
       assert {Triage.IntegrationTest,
-              :"-test then/2 with wrap_context wraps caught exception with context/1-fun-0-", _,
-              [file: ~c"test/triage/integration_test.exs", line: _]} =
+              :"-test ok_then/2 with wrap_context wraps caught exception with context/1-fun-0-",
+              _, [file: ~c"test/triage/integration_test.exs", line: _]} =
                List.first(second_wrapped_error.stacktrace)
 
       assert %ArgumentError{message: "invalid value"} = second_wrapped_error.result
@@ -100,7 +100,7 @@ defmodule Triage.IntegrationTest do
     test "wraps error with context" do
       result =
         {:error, "user not found"}
-        |> Triage.then(fn _ -> raise "Should not be called" end)
+        |> Triage.ok_then(fn _ -> raise "Should not be called" end)
         |> Triage.wrap_context("Fetching user")
 
       assert {:error, %Triage.WrappedError{} = wrapped_error} = result
@@ -112,9 +112,9 @@ defmodule Triage.IntegrationTest do
     test "chains multiple wrap_context calls" do
       result =
         {:ok, "user@example.com"}
-        |> Triage.then(fn email -> {:error, "invalid email: #{email}"} end)
+        |> Triage.ok_then(fn email -> {:error, "invalid email: #{email}"} end)
         |> Triage.wrap_context("first")
-        |> Triage.then(fn _ -> raise "Should not be called" end)
+        |> Triage.ok_then(fn _ -> raise "Should not be called" end)
         |> Triage.wrap_context("second")
 
       assert {:error, %Triage.WrappedError{} = wrapped_error} = result
@@ -133,7 +133,7 @@ defmodule Triage.IntegrationTest do
       log =
         capture_log([level: :error], fn ->
           result =
-            Triage.then!(fn -> {:error, "database timeout"} end)
+            Triage.run!(fn -> {:error, "database timeout"} end)
             |> Triage.wrap_context("Fetching user data")
             |> Triage.log()
 
@@ -145,12 +145,12 @@ defmodule Triage.IntegrationTest do
     \[CONTEXT\] test/triage/integration_test\.exs:\d+: Fetching user data>
     end
 
-    test "logs nested wrapped errors from then/2 exception" do
+    test "logs nested wrapped errors from ok_then/2 exception" do
       log =
         capture_log([level: :error], fn ->
           result =
             {:ok, 100}
-            |> Triage.then(&Triage.TestHelper.raise_argument_error/1)
+            |> Triage.ok_then(&Triage.TestHelper.raise_argument_error/1)
             |> Triage.wrap_context("Processing payment")
             |> Triage.log()
 
@@ -168,7 +168,7 @@ defmodule Triage.IntegrationTest do
         capture_log([level: :error], fn ->
           result =
             {:ok, "test@example.com"}
-            |> Triage.then!(fn email -> {:error, "invalid domain for #{email}"} end)
+            |> Triage.ok_then!(fn email -> {:error, "invalid domain for #{email}"} end)
             |> Triage.wrap_context("Validating email")
             |> Triage.wrap_context("User registration")
             |> Triage.wrap_context("API endpoint: /users")
@@ -204,14 +204,14 @@ defmodule Triage.IntegrationTest do
       assert log =~ ~r<\[RESULT\] test/triage/integration_test\.exs:\d+: {:ok, 42}>
     end
 
-    test "logs then/2 chain with exception and wrap_context" do
+    test "logs ok_then/2 chain with exception and wrap_context" do
       log =
         capture_log([level: :error], fn ->
           result =
             {:ok, 5}
-            |> Triage.then(fn x -> x * 2 end)
-            |> Triage.then(fn x -> x + 3 end)
-            |> Triage.then(fn _ -> raise RuntimeError, "unexpected failure" end)
+            |> Triage.ok_then(fn x -> x * 2 end)
+            |> Triage.ok_then(fn x -> x + 3 end)
+            |> Triage.ok_then(fn _ -> raise RuntimeError, "unexpected failure" end)
             |> Triage.wrap_context("Data processing pipeline")
             |> Triage.log()
 
@@ -221,7 +221,7 @@ defmodule Triage.IntegrationTest do
       assert log =~
                ~r<\[RESULT\] test/triage/integration_test\.exs:\d+: \*\* \(RuntimeError\) unexpected failure
     \[CONTEXT\] test/triage/integration_test\.exs:\d+: Data processing pipeline
-    \[CONTEXT\] test/triage/integration_test\.exs:\d+: Triage\.IntegrationTest\.-test log with wrapped errors logs then/2 chain with exception and wrap_context/1-fun-0-/1>
+    \[CONTEXT\] test/triage/integration_test\.exs:\d+: Triage\.IntegrationTest\.-test log with wrapped errors logs ok_then/2 chain with exception and wrap_context/1-fun-0-/1>
     end
   end
 
@@ -230,7 +230,7 @@ defmodule Triage.IntegrationTest do
   #     capture_log([level: :error], fn ->
   #       {:ok, "123u"}
   #       # Raises if not a valid integer
-  #       |> Triage.then(&String.to_integer/1)
+  #       |> Triage.ok_then(&String.to_integer/1)
   #       |> Triage.log()
   #     end)
   #
@@ -247,7 +247,7 @@ defmodule Triage.IntegrationTest do
   #     capture_log([level: :error], fn ->
   #       {:ok, "123u"}
   #       # Raises if not a valid integer
-  #       |> Triage.then(&String.to_integer/1)
+  #       |> Triage.ok_then(&String.to_integer/1)
   #       |> Triage.log()
   #     end)
   #

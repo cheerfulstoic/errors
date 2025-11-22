@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-11-21
+
+### Changed
+
+- Renamed `then!/1` and `then/1` to `run!/1` and `run/1`
+- Renamed `then!/2` and `then/2` to `ok_then!/2` and `ok_then/2`
+- Renamed `handle/2` to `error_then/2`
+
+### Added
+
+- `retries` option for `run!/2`,`run/2`, `ok_then!/3`, and `ok_then/3`
+
 ## [0.4.4] - 2025-11-19
 
 ### Added

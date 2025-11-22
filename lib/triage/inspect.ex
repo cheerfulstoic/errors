@@ -65,7 +65,12 @@ defimpl Inspect, for: Triage.Inspect.Wrapper do
       |> Enum.filter(&include_key_value?(mod, &1.field, map[&1.field]))
       |> order_fields()
 
-    apply(Inspect.Any, @inspect_any_function, [map, Macro.inspect_atom(:literal, mod), fields, opts])
+    apply(Inspect.Any, @inspect_any_function, [
+      map,
+      Macro.inspect_atom(:literal, mod),
+      fields,
+      opts
+    ])
   end
 
   defp inspect_value(value, opts), do: Inspect.inspect(value, opts)

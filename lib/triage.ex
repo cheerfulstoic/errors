@@ -98,7 +98,7 @@ defmodule Triage do
   (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`). If the function returns
   any other value, it wraps it in `{:ok, value}`.
 
-  This is the "unsafe" version that doesn't catch exceptions. Use `then/1` for
+  This is the "unsafe" version that doesn't catch exceptions. Use `run/1` for
   exception handling.
 
   ## Parameters
@@ -107,78 +107,32 @@ defmodule Triage do
 
   ## Examples
 
-      iex> then!(fn -> 42 end)
+      iex> run!(fn -> 42 end)
       {:ok, 42}
 
-      iex> then!(fn -> {:ok, 42} end)
+      iex> run!(fn -> {:ok, 42} end)
       {:ok, 42}
 
-      iex> then!(fn -> {:error, :not_found} end)
+      iex> run!(fn -> {:error, :not_found} end)
       {:error, :not_found}
 
-      iex> then!(fn -> :error end)
+      iex> run!(fn -> :error end)
+      :error
+
+      iex> run!(&function_to_try, retries: 2)
       :error
   """
-  @spec then!((-> any())) :: result()
-  def then!(func) do
-    case func.() do
-      :ok -> :ok
-      {:ok, _} = result -> result
-      :error -> :error
-      {:error, _} = result -> result
-      other -> {:ok, other}
-    end
+  @spec run!((-> any())) :: result()
+  @spec run!((-> any()), retries: non_neg_integer()) :: result()
+  def run!(func, opts \\ []) do
+    opts = validate_run_opts!(opts)
+
+    ok_then!(
+      {:ok, :test},
+      fn _ -> func.() end,
+      opts
+    )
   end
-
-  @doc group: "Functions > Control Flow"
-  @doc """
-  Executes a function with a previous result value, without exception handling.
-
-  Takes a result from a previous then and, if successful, passes the unwrapped value
-  to the provided function. If the previous result was an error, short-circuits and
-  returns the error without calling the function.
-
-  This is the "unsafe" version that doesn't catch exceptions. Use `then/2` for
-  exception handling.
-
-  ## Parameters
-
-    * `result` - The previous result (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`)
-    * `func` - A function that takes the unwrapped value and returns a result
-
-  ## Examples
-
-      iex> then!({:ok, 5}, fn x -> {:ok, x * 2} end)
-      {:ok, 10}
-
-      iex> then!({:error, :not_found}, fn x -> {:ok, x * 2} end)
-      {:error, :not_found}
-  """
-  @spec then!(result(), (any() -> any())) :: result()
-  def then!(:ok, func) do
-    case func.(nil) do
-      :ok -> :ok
-      {:ok, _} = result -> result
-      :error -> :error
-      {:error, _} = result -> result
-      other -> {:ok, other}
-    end
-  end
-
-  def then!({:ok, value}, func) do
-    case func.(value) do
-      :ok -> :ok
-      {:ok, _} = result -> result
-      :error -> :error
-      {:error, _} = result -> result
-      other -> {:ok, other}
-    end
-  end
-
-  def then!(:error, _func), do: :error
-
-  def then!({:error, _} = result, _func), do: result
-  def then!(other, _), do: Validate.validate_result!(other, :strict)
 
   @doc group: "Functions > Control Flow"
   @doc """
@@ -194,29 +148,99 @@ defmodule Triage do
 
   ## Examples
 
-      iex> then(fn -> {:ok, 42} end)
+      iex> run(fn -> {:ok, 42} end)
       {:ok, 42}
 
-      iex> then(fn -> raise "boom" end)
+      iex> run(fn -> raise "boom" end)
       {:error, %Triage.WrappedError{}}
   """
-  @spec then((any() -> any())) :: result()
-  def then(func) do
+  @spec run((-> any())) :: result()
+  @spec run((-> any()), retries: non_neg_integer()) :: result()
+  def run(func, opts \\ []) do
+    opts = validate_run_opts!(opts)
+
     try do
-      then!(func)
+      run!(func, opts)
     rescue
       exception ->
-        {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+        if opts[:retries] == 0 do
+          {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+        else
+          run(func, Keyword.update!(opts, :retries, &(&1 - 1)))
+        end
     end
   end
+
+  defp validate_run_opts!(opts) do
+    # Same logic (for now)
+    validate_ok_then_opts!(opts)
+  end
+
+  @doc group: "Functions > Control Flow"
+  @doc """
+  Executes a function with a previous result value, without exception handling.
+
+  Takes a result and, if it's an :ok, passes the value from the tuple to the provided function.
+  If the result was an error, short-circuits and returns the error without calling the function.
+
+  This is the "unsafe" version that doesn't catch exceptions. Use `ok_then/2` for
+  exception handling.
+
+  ## Parameters
+
+    * `result` - The previous result (`:ok`, `{:ok, value}`, `:error`, or `{:error, reason}`)
+    * `func` - A function that takes the unwrapped value and returns a result
+
+  ## Examples
+
+      iex> ok_then!({:ok, 5}, fn x -> {:ok, x * 2} end)
+      {:ok, 10}
+
+      iex> ok_then!({:error, :not_found}, fn x -> {:ok, x * 2} end)
+      {:error, :not_found}
+  """
+  @spec ok_then!(result(), (any() -> any())) :: result()
+  @spec ok_then!(result(), (any() -> any()), retries: non_neg_integer()) :: result()
+  def ok_then!(result, func, opts \\ [])
+
+  def ok_then!(:ok, func, opts) do
+    ok_then!({:ok, nil}, func, opts)
+  end
+
+  def ok_then!({:ok, value}, func, opts) do
+    opts = validate_ok_then_opts!(opts)
+
+    result = func.(value)
+
+    cond do
+      result == :ok or match?({:ok, _}, result) ->
+        result
+
+      result == :error or match?({:error, _}, result) ->
+        if opts[:retries] == 0 do
+          result
+        else
+          ok_then!({:ok, value}, func, Keyword.update!(opts, :retries, &(&1 - 1)))
+        end
+
+      true ->
+        {:ok, result}
+    end
+  end
+
+  def ok_then!(:error, _func, _opts), do: :error
+
+  def ok_then!({:error, _} = result, _func, _opts), do: result
+  def ok_then!(other, _, _), do: Validate.validate_result!(other, :strict)
 
   @doc group: "Functions > Control Flow"
   @doc """
   Executes a function with a previous result value, with exception handling.
 
-  Takes a result from a previous then and, if successful, passes the unwrapped value
-  to the provided function. If the previous result was an error, short-circuits and
-  returns the error. If the function raises an exception, it catches it and returns
+  Takes a result and, if :ok, passes the value from the tuple to the provided function.
+  If the previous result was an error, short-circuits and returns the error.
+
+  If the function raises an exception, it catches it and returns
   `{:error, %Triage.WrappedError{}}` with details about the exception.
 
   ## Parameters
@@ -226,19 +250,44 @@ defmodule Triage do
 
   ## Examples
 
-      iex> then({:ok, 5}, fn x -> {:ok, x * 2} end)
+      iex> ok_then({:ok, 5}, fn x -> {:ok, x * 2} end)
       {:ok, 10}
 
-      iex> then({:ok, 5}, fn _x -> raise "boom" end)
+      iex> ok_then({:ok, 5}, fn _x -> raise "boom" end)
       {:error, %Triage.WrappedError{}}
   """
-  @spec then(result(), (any() -> any())) :: result()
-  def then(result, func) do
+  @spec ok_then(result(), (any() -> any())) :: result()
+  @spec ok_then(result(), (any() -> any()), retries: non_neg_integer()) :: result()
+  def ok_then(result, func, opts \\ [])
+
+  def ok_then(result, func, opts) do
+    opts = validate_ok_then_opts!(opts)
+
     try do
-      then!(result, func)
+      ok_then!(result, func, opts)
     rescue
       exception ->
-        {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+        if opts[:retries] == 0 do
+          {:error, WrappedError.new_raised(exception, func, __STACKTRACE__)}
+        else
+          ok_then(result, func, Keyword.update!(opts, :retries, &(&1 - 1)))
+        end
+    end
+  end
+
+  defp validate_ok_then_opts!(opts) do
+    NimbleOptions.validate(opts,
+      retries: [
+        type: :non_neg_integer,
+        default: 0
+      ]
+    )
+    |> case do
+      {:error, %NimbleOptions.ValidationError{} = error} ->
+        raise ArgumentError, Exception.message(error)
+
+      {:ok, opts} ->
+        opts
     end
   end
 
@@ -248,7 +297,7 @@ defmodule Triage do
 
   When given result is `{:error, reason}`, the `reason` is passed into the callback
   function. The callback function can then return a new `reason` which will be
-  returned from `handle` wrapped in an `{:error, _}` tuple.
+  returned from `error_then` wrapped in an `{:error, _}` tuple.
 
   If `:error` is the given result, `nil` will be given to the callback function.
 
@@ -257,25 +306,25 @@ defmodule Triage do
 
   ## Examples
 
-      iex> ping_account_server() |> Triage.handle(fn _ -> :account_server_failure end)
+      iex> ping_account_server() |> Triage.error_then(fn _ -> :account_server_failure end)
       {:error, :account_server_failure}
 
-      iex> Triage.handle({:error, :unknown}, fn :unknown -> {:ok, @default_value} end)
+      iex> Triage.error_then({:error, :unknown}, fn :unknown -> {:ok, @default_value} end)
       {:ok, ...}
 
-      iex> Triage.handle(:ok, fn _ -> :not_used end)
+      iex> Triage.error_then(:ok, fn _ -> :not_used end)
       :ok
 
-      iex> Triage.handle({:ok, ...}, fn _ -> :not_used end)
+      iex> Triage.error_then({:ok, ...}, fn _ -> :not_used end)
       {:ok, 42}
 
-      iex> Triage.handle(:error, fn nil -> :handled end)
+      iex> Triage.error_then(:error, fn nil -> :handled end)
       {:error, :handled}
   """
-  @spec handle(result(), (any() -> any())) :: result()
-  def handle(:error, func), do: handle({:error, nil}, func)
+  @spec error_then(result(), (any() -> any())) :: result()
+  def error_then(:error, func), do: error_then({:error, nil}, func)
 
-  def handle({:error, reason}, func) do
+  def error_then({:error, reason}, func) do
     case func.(reason) do
       :ok ->
         :ok
@@ -283,12 +332,15 @@ defmodule Triage do
       {:ok, _} = result ->
         result
 
+      nil ->
+        :error
+
       other ->
         {:error, other}
     end
   end
 
-  def handle(result, _) do
+  def error_then(result, _) do
     Validate.validate_result!(result, :strict)
 
     result

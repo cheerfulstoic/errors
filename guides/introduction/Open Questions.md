@@ -14,17 +14,17 @@ It also shouldn't be the goal that people use `triage` for all types of result o
 
 ## Bang syntax
 
-I'm curious what people think about functions like `then` vs `then!`.  The `then!` could be considered a "default" because it doesn't "do" anything. Rather it's the `then` function which actively rescues from exceptions. But it does feel right, in a way, to have a simple convention that `then!` is the one where you can expect exception to come from 🤷‍♂️
+I'm curious what people think about functions like `ok_then` vs `ok_then!`.  The `ok_then!` could be considered a "default" because it doesn't "do" anything. Rather it's the `ok_then` function which actively rescues from exceptions. But it does feel right, in a way, to have a simple convention that `ok_then!` is the one where you can expect exception to come from 🤷‍♂️
 
-## Should `then` return `WrappedError`?
+## Should `ok_then` return `WrappedError`?
 
-Currently when an exception is raised in the function given to `Triage.then`, it returns a `WrappedError` which "contains" the exception. This `WrappedError` automatically includes context information about the function (the line/number if anonymous and the name of the function if captured). Should the raw exception be returned instead? It wouldn't have STACKTRACE information because that's not on exceptions.
+Currently when an exception is raised in the function given to `Triage.ok_then`, it returns a `WrappedError` which "contains" the exception. This `WrappedError` automatically includes context information about the function (the line/number if anonymous and the name of the function if captured). Should the raw exception be returned instead? It wouldn't have STACKTRACE information because that's not on exceptions.
 
-## Should `then!/1` exist?
+## Should `ok_then!/1` exist?
 
-Calling `then!` functions doesn't catch exceptions.  So is there a difference between calling `then!/1` with some code or just running that code directly?
+Calling `ok_then!` functions doesn't catch exceptions.  So is there a difference between calling `ok_then!/1` with some code or just running that code directly?
 
-* `then/1` captures errors
-* `then!/2` / `then/2` only execute the function on :ok results and unwrap the result
+* `ok_then/1` captures errors
+* `ok_then!/2` / `ok_then/2` only execute the function on :ok results and unwrap the result
 
-The `then!/1` function at least has the behavior that you can return a non-result and it will automatically wrap it in `{:ok, _}`, but is that worthwhile enough?
+The `ok_then!/1` function at least has the behavior that you can return a non-result and it will automatically wrap it in `{:ok, _}`, but is that worthwhile enough?

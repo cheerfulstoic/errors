@@ -30,15 +30,15 @@ case ChatCompletions.create(openai_client, chat_completion) do
 end
 ```
 
-* Since there is just one `:ok` pattern, we can simplify it with a single `then!` call.
+* Since there is just one `:ok` pattern, we can simplify it with a single `ok_then!` call.
 * While the `wrap_context` won't output the same log exactly, it will provide metadata for either `:error` case
-* Since we always return `:llm_request_failed` for errors, this can be a single `handle`
+* Since we always return `:llm_request_failed` for errors, this can be a single `error_then`
 
-Since the purpose of returning `:llm_request_failed` is probably to help locate the error when there's a failure, we could even skip the `handle` entirely and handle the `WrappedError` higher up which will have information about where the error came from.
+Since the purpose of returning `:llm_request_failed` is probably to help locate the error when there's a failure, we could even skip the `error_then` entirely and error_then the `WrappedError` higher up which will have information about where the error came from.
 
 ```elixir
 ChatCompletions.create(openai_client, chat_completion)
-|> Triage.then!(fn response when is_map(response) -> response end)
+|> Triage.ok_then!(fn response when is_map(response) -> response end)
 |> Triage.wrap_context(
   status: status,
   message: message,
@@ -46,7 +46,7 @@ ChatCompletions.create(openai_client, chat_completion)
   model: ai_config[:model]
 )
 |> Triage.log()
-|> Triage.handle(fn _ -> :llm_request_failed end)
+|> Triage.error_then(fn _ -> :llm_request_failed end)
 ```
 
 ## Two functions, two cases
@@ -102,8 +102,8 @@ If we use `Triage.log` just after `File.read` we log just those errors like the 
 ```elixir
   def store_file(filename, file_path, content_type, s3_client \\ storage_provider()) do
     File.read(file_path)
-    |> Triage.then!(&Vault.encrypt/1)
-    |> Triage.then!(fn encrypted_file ->
+    |> Triage.ok_then!(&Vault.encrypt/1)
+    |> Triage.ok_then!(fn encrypted_file ->
       encrypted_file_path = upload_path(filename)
 
       s3_client.put_object(
@@ -113,7 +113,7 @@ If we use `Triage.log` just after `File.read` we log just those errors like the 
         %{content_type: content_type}
       )
       |> Triage.wrap_context("Putting to S3", filename: filename)
-      |> Triage.then!(fn _ -> encrypted_file_path end)
+      |> Triage.ok_then!(fn _ -> encrypted_file_path end)
     end)
     |> Triage.wrap_context(
       "storing encrypted file",
@@ -246,7 +246,7 @@ Aside from generally removing the boilerplate of handling `{:ok, _}` and `{:erro
 * ... removes two functions
 * ... makes it clear at a higher level when we're mapping over operations
 
-If we moved to using `Triage.wrap_context` and changed the `FallbackController` to handle the resulting `WrappedError`s, we could also potentially remove some of the error handling here while also adding some useful context to errors which are returned.
+If we moved to using `Triage.wrap_context` and changed the `FallbackController` to error_then the resulting `WrappedError`s, we could also potentially remove some of the error handling here while also adding some useful context to errors which are returned.
 
 ```elixir
   @spec compose([binary()]) ::
@@ -262,13 +262,13 @@ If we moved to using `Triage.wrap_context` and changed the `FallbackController` 
     # of the original, it should be fine
     |> Triage.map_if(&cue_transaction/1)
     |> Triage.map_if(&noun_to_transaction/1)
-    |> Triage.then!(&compose_transactions/1)
-    |> Triage.then!(fn composed ->
+    |> Triage.ok_then!(&compose_transactions/1)
+    |> Triage.ok_then!(fn composed ->
       composed
       |> Nounable.to_noun()
       |> Jam.jam()
     end)
-    |> Triage.handle(fn
+    |> Triage.error_then(fn
       {:cue_failed, err} ->
         {:invalid_input, err}
 
@@ -286,8 +286,8 @@ If we moved to using `Triage.wrap_context` and changed the `FallbackController` 
           | {:error, :cue_failed, term()}
   def verify(transaction) do
     cue_transaction(transaction)
-    |> Triage.then!(&noun_to_transaction/1)
-    |> Triage.then!(fn transaction ->
+    |> Triage.ok_then!(&noun_to_transaction/1)
+    |> Triage.ok_then!(fn transaction ->
       # will raise a `MatchError` when not a boolean
       # should be basically the same result as the `WithClauseError`
       # which would have been raised before
@@ -302,13 +302,13 @@ If we moved to using `Triage.wrap_context` and changed the `FallbackController` 
         {:ok, Noun.t()} | {:error, :cue_failed, term()}
   defp cue_transaction(transaction) do
     Jam.cue(transaction)
-    |> Triage.handle(fn %{message: err} -> {:cue_failed, err} end)
+    |> Triage.error_then(fn %{message: err} -> {:cue_failed, err} end)
   end
 
   @spec noun_to_transaction(Noun.t()) ::
           {:ok, Transaction.t()} | {:error, :noun_not_a_valid_transaction}
   defp noun_to_transaction(noun) do
     Transaction.from_noun(noun)
-    |> Triage.handle(fn :error -> :noun_not_a_valid_transaction end)
+    |> Triage.error_then(fn :error -> :noun_not_a_valid_transaction end)
   end
 ```
